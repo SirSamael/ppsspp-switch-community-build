@@ -1,3 +1,93 @@
+# PPSSPP Nintendo Switch Community Build
+
+A community Nintendo Switch build of **PPSSPP v1.20.4** with additional Switch-specific improvements, compatibility fixes, and multiplayer debugging features.
+
+This project is based on the original PPSSPP emulator and focuses on improving the Nintendo Switch experience through native **libnx support**, platform fixes, and testing improvements.
+
+> This is an unofficial community build and is not affiliated with the official PPSSPP project.
+
+---
+
+## About This Project
+
+PPSSPP is a PSP emulator that allows users to play PSP games on modern platforms.
+
+This repository contains experimental Nintendo Switch-focused modifications designed to improve compatibility, stability, and development support for the Nintendo Switch platform.
+
+The main goals of this project are:
+
+- Improve Nintendo Switch compatibility
+- Fix platform-specific issues
+- Improve Adhoc multiplayer testing
+- Provide a better development base for future Switch improvements
+
+---
+
+## Features
+
+### Nintendo Switch Support
+
+- Native Nintendo Switch build support using **libnx**
+- CMake support for Nintendo Switch toolchain
+- Switch-specific compatibility fixes
+- Platform-specific system adjustments
+
+### Graphics Improvements
+
+- Nintendo Switch OpenGL compatibility fixes
+- OpenGL function conflict handling
+- Improved graphics backend compatibility
+
+### Memory & System Improvements
+
+- Switch-compatible memory handling
+- libnx compatibility adjustments
+- Platform-specific fixes for Switch environment
+
+### Multiplayer Diagnostics
+
+Additional tools for testing PSP Adhoc multiplayer:
+
+- Network send timing diagnostics
+- Packet delay detection
+- Multiplayer troubleshooting logs
+- Connection performance testing
+
+---
+
+## Based On
+
+This project is based on:
+
+- **PPSSPP v1.20.4**
+- Original PPSSPP source code
+
+Original project:
+
+https://github.com/hrydgard/ppsspp
+
+---
+
+## Build Requirements
+
+To build this project for Nintendo Switch, you need:
+
+### Required Tools
+
+- devkitPro
+- devkitA64
+- libnx
+- Nintendo Switch portlibs
+- CMake
+- Ninja Build
+
+Recommended environment:
+
+- Windows + MSYS2
+- Linux with devkitPro environment
+
+---
+
 ## Building For Nintendo Switch
 
 Example build configuration:
@@ -16,13 +106,49 @@ cmake .. -G Ninja \
 -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON
 
 ninja
-The generated Nintendo Switch application can then be tested on compatible hardware.
+After a successful build, the generated Nintendo Switch application can be tested on compatible hardware.
 Current Development Status
 This project is currently experimental.
-The main focus areas are:
+Current testing areas:
 PSP game compatibility
 Nintendo Switch performance
 Adhoc multiplayer stability
 Graphics compatibility
 Memory management improvements
-Not all games are guaranteed to work at this stage.
+Not all PSP games are guaranteed to work correctly.
+Known Issues
+Some games may have compatibility problems.
+Multiplayer testing is still ongoing.
+Performance may vary depending on the game.
+Some features may require further Switch-specific optimization.
+Submodule Patches
+Some Switch compatibility changes are stored as patch files.
+Location:
+patches/submodules/
+Apply them after initializing submodules:
+git -C ext/aemu_postoffice apply ../../patches/submodules/aemu_postoffice-switch.patch
+
+git -C ext/glslang apply ../../patches/submodules/glslang-switch.patch
+
+git -C ext/lua apply ../../patches/submodules/lua-switch.patch
+Credits
+Original PPSSPP Development
+The original PPSSPP emulator is developed by:
+Henrik Rydgård (hrydgard) and contributors
+Original repository:
+https://github.com/hrydgard/ppsspp
+Nintendo Switch Community Build
+Nintendo Switch modifications, testing, and improvements:
+SirSamael
+Disclaimer
+This project is an unofficial community build.
+All trademarks and copyrights belong to their respective owners.
+Please support the original PPSSPP project.
+
+After pasting, commit it:
+
+```bash
+git add README.md
+git commit -m "Improve README structure and documentation"
+git push
+This version is clean enough for a public GitHub repository.
