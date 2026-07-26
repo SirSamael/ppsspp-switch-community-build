@@ -88,6 +88,14 @@ Recommended environment:
 
 ---
 
+The generated Nintendo Switch application can then be tested on compatible hardware.
+
+---
+
+## Current Development Status
+
+This project is currently experimental.
+
 ## Building For Nintendo Switch
 
 Example build configuration:
@@ -106,3 +114,4 @@ cmake .. -G Ninja \
 -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON
 
 ninja
+
