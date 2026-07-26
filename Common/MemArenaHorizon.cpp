@@ -25,6 +25,14 @@ static uintptr_t memoryBase = 0;
 static uintptr_t memoryCodeBase = 0;
 static uintptr_t memorySrcBase = 0;
 
+static void *ReserveVirtmem(size_t size, bool code) {
+	virtmemLock();
+	void *address = code ? virtmemFindCodeMemory(size, 0x1000) : virtmemFindAslr(size, 0x1000);
+	VirtmemReservation *reservation = address ? virtmemAddReservation(address, size) : nullptr;
+	virtmemUnlock();
+	return reservation ? address : nullptr;
+}
+
 size_t MemArena::roundup(size_t x) {
 	return x;
 }
@@ -67,10 +75,10 @@ u8 *MemArena::Find4GBBase() {
 	memorySrcBase = (uintptr_t)memalign(0x1000, 0x10000000);
 
 	if (!memoryBase)
-		memoryBase = (uintptr_t)virtmemReserve(0x10000000);
+		memoryBase = (uintptr_t)ReserveVirtmem(0x10000000, false);
 
 	if (!memoryCodeBase)
-		memoryCodeBase = (uintptr_t)virtmemReserve(0x10000000);
+		memoryCodeBase = (uintptr_t)ReserveVirtmem(0x10000000, true);
 
 	if (R_FAILED(svcMapProcessCodeMemory(envGetOwnProcessHandle(), (u64)memoryCodeBase, (u64)memorySrcBase, 0x10000000)))
 		printf("Failed to map memory...\n");

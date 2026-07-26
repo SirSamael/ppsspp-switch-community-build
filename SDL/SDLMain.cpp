@@ -26,7 +26,9 @@ SDLJoystick *joystick = NULL;
 #include <thread>
 #include <locale>
 
+#if !PPSSPP_PLATFORM(SWITCH)
 #include "ext/portable-file-dialogs/portable-file-dialogs.h"
+#endif
 
 #include "ext/imgui/imgui.h"
 #include "ext/imgui/imgui_impl_platform.h"
@@ -375,7 +377,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 		DarwinFileSystemServices::presentDirectoryPanel(callback, /* allowFiles = */ false, /* allowDirectories = */ true);
 		return true;
 	}
-#else
+#elif !PPSSPP_PLATFORM(SWITCH)
 	case SystemRequestType::BROWSE_FOR_IMAGE:
 	{
 		// TODO: Add non-blocking support.
@@ -761,7 +763,11 @@ case SYSPROP_HAS_FILE_BROWSER:
 #if PPSSPP_PLATFORM(MAC)
 		return true;
 #else
+#if PPSSPP_PLATFORM(SWITCH)
+		return false;
+#else
 		return pfd::settings::available();
+#endif
 #endif
 	case SYSPROP_HAS_ACCELEROMETER:
 #if defined(MOBILE_DEVICE)
@@ -1686,19 +1692,24 @@ int main(int argc, char *argv[]) {
 	if (g_Config.iGPUBackend == (int)GPUBackend::OPENGL) {
 		SDLGLGraphicsContext *glctx = new SDLGLGraphicsContext();
 		if (glctx->Init(window, x, y, w, h, mode, &error_message, force_gl_version) != 0) {
-			// Let's try the fallback once per process run.
+#if PPSSPP_PLATFORM(SWITCH)
+			fprintf(stderr, "OpenGL initialization failed: %s\n", error_message.c_str());
+			delete glctx;
+			return 1;
+#else
+			// Try Vulkan as a fallback on supported desktop platforms.
 			fprintf(stderr, "GL init error '%s' - falling back to Vulkan\n", error_message.c_str());
 			g_Config.iGPUBackend = (int)GPUBackend::VULKAN;
 			SetGPUBackend((GPUBackend)g_Config.iGPUBackend);
 			delete glctx;
 
-			// NOTE : This should match the lines below in the Vulkan case.
 			SDLVulkanGraphicsContext *vkctx = new SDLVulkanGraphicsContext();
 			if (!vkctx->Init(window, x, y, w, h, mode | SDL_WINDOW_VULKAN, &error_message)) {
 				fprintf(stderr, "Vulkan fallback failed: %s\n", error_message.c_str());
 				return 1;
 			}
 			graphicsContext = vkctx;
+#endif
 		} else {
 			graphicsContext = glctx;
 		}

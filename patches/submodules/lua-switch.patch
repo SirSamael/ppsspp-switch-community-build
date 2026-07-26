@@ -1,0 +1,17 @@
+diff --git a/luaconf.h b/luaconf.h
+index 33bb580..1c29bc1 100644
+--- a/luaconf.h
++++ b/luaconf.h
+@@ -11,6 +11,12 @@
+ #include <limits.h>
+ #include <stddef.h>
+ 
++#if defined(__SWITCH__) && !defined(LLONG_MAX)
++#define LLONG_MAX __LONG_LONG_MAX__
++#define LLONG_MIN (-__LONG_LONG_MAX__ - 1LL)
++#define ULLONG_MAX (__LONG_LONG_MAX__ * 2ULL + 1ULL)
++#endif
++
+ 
+ /*
+ ** ===================================================================

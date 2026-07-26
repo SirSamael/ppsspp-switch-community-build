@@ -151,3 +151,10 @@ RAPrefs_PPSSPP.cfg
 cmake-build-*/
 
 /.vscode/
+
+# Nintendo Switch build files
+/build/
+*.nro
+*.nso
+*.elf
+*.map

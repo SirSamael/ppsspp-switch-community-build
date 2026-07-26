@@ -197,6 +197,12 @@ option(SIMULATOR "Set to ON when targeting an x86 simulator of an ARM platform" 
 option(LIBRETRO "Set to ON to generate the libretro target" OFF)
 # :: Options
 option(USE_LIBNX "Set to ON to build for Switch(libnx)" OFF)
+
+if(USE_LIBNX)
+	# libnx does not provide a separate Linux-style libdl.
+	set(CMAKE_DL_LIBS "")
+	add_compile_definitions(HAVE_LIBNX IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS)
+endif()
 option(USE_FFMPEG "Build with FFMPEG support" ON)
 option(USE_DISCORD "Build with Discord support" ON)
 option(USE_MINIUPNPC "Build with miniUPnPc support" ON)
@@ -306,6 +312,11 @@ if(OPENXR AND NOT ARMV7_DEVICE)
 	set(OPENGL_LIBRARIES GLESv3 EGL)
 elseif(NOT OPENGL_LIBRARIES AND USING_GLES2)
 	set(OPENGL_LIBRARIES GLESv2 EGL)
+endif()
+
+if(USE_LIBNX)
+	# Static Switch EGL/GLES dependencies must follow EGL.
+	list(APPEND OPENGL_LIBRARIES drm_nouveau glapi)
 endif()
 
 if(NOT OPENGL_LIBRARIES)
@@ -1285,8 +1296,10 @@ target_link_libraries(7zip)
 include_directories(ext/lzma-sdk)
 set(LIB7ZIP_LIBRARY 7zip)
 
-# Arm platforms require at least libpng17.
-if(ANDROID OR ARMV7 OR ARM64 OR ARM OR IOS)
+# Switch portlibs uses the standard libpng API.
+if(USE_LIBNX)
+	set(PNG_REQUIRED_VERSION 1.6)
+elseif(ANDROID OR ARMV7 OR ARM64 OR ARM OR IOS)
 	set(PNG_REQUIRED_VERSION 1.7)
 else()
 	set(PNG_REQUIRED_VERSION 1.6)
@@ -2120,7 +2133,7 @@ if(WIN32)
 	)
 endif()
 
-if(LINUX OR ANDROID OR MACOSX OR IOS OR BSD)
+if(LINUX OR ANDROID OR MACOSX OR IOS OR BSD OR USE_LIBNX)
 	list(APPEND aemu_postoffice
 		ext/aemu_postoffice/client/sock_impl_linux.c
 	)

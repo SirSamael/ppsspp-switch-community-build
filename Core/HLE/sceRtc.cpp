@@ -443,7 +443,7 @@ static int sceRtcConvertLocalTimeToUTC(u32 tickLocalPtr,u32 tickUTCPtr)
 		long timezone_val;
 		_get_timezone(&timezone_val);
 		srcTick -= -timezone_val * 1000000ULL;
-#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX)
+#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX) && !defined(__SWITCH__)
 		time_t timezone = 0;
 		tm *time = localtime(&timezone);
 		srcTick -= time->tm_gmtoff*1000000ULL;
@@ -468,7 +468,7 @@ static int sceRtcConvertUtcToLocalTime(u32 tickUTCPtr,u32 tickLocalPtr)
 		long timezone_val;
 		_get_timezone(&timezone_val);
 		srcTick += -timezone_val * 1000000ULL;
-#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX)
+#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX) && !defined(__SWITCH__)
 		time_t timezone = 0;
 		tm *time = localtime(&timezone);
 		srcTick += time->tm_gmtoff*1000000ULL;
@@ -916,7 +916,7 @@ static int sceRtcFormatRFC2822LocalTime(u32 outPtr, u32 srcTickPtr)
 		long timezone_val;
 		_get_timezone(&timezone_val);
 		tz_seconds = -timezone_val;
-#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX)
+#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX) && !defined(__SWITCH__)
 		time_t timezone = 0;
 		tm *time = localtime(&timezone);
 		tz_seconds = time->tm_gmtoff;
@@ -953,7 +953,7 @@ static int sceRtcFormatRFC3339LocalTime(u32 outPtr, u32 srcTickPtr)
 		long timezone_val;
 		_get_timezone(&timezone_val);
 		tz_seconds = -timezone_val;
-#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX)
+#elif !defined(_AIX) && !defined(__sgi) && !defined(__hpux) && !defined(HAVE_LIBNX) && !defined(__SWITCH__)
 		time_t timezone = 0;
 		tm *time = localtime(&timezone);
 		tz_seconds = time->tm_gmtoff;

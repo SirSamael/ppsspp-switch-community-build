@@ -1,0 +1,13 @@
+diff --git a/client/sock_impl.h b/client/sock_impl.h
+index 63d81b6..45ee89c 100644
+--- a/client/sock_impl.h
++++ b/client/sock_impl.h
+@@ -3,7 +3,7 @@
+ 
+ #include <stdbool.h>
+ 
+-#if defined(__unix) || defined(__APPLE__) || defined(__PSP__)
++#if defined(__unix) || defined(__APPLE__) || defined(__PSP__) || defined(__SWITCH__)
+ #include <netinet/in.h>
+ #endif
+ 

@@ -20,6 +20,7 @@
 // All credit goes to him!
 
 
+#include <atomic>
 #include <mutex>
 #include <string>
 
@@ -70,6 +71,32 @@
 // TODO: Make accessor functions instead, and throw all this state in a struct.
 bool netAdhocInited;
 bool netAdhocctlInited;
+
+#if PPSSPP_PLATFORM(SWITCH)
+static std::atomic<u64> g_switchPdpLastSendUs{0};
+static std::atomic<u64> g_switchPdpLastRecvUs{0};
+
+static void SwitchLogPdpGap(
+    const char *direction,
+    int bytes,
+    std::atomic<u64> &lastTime
+) {
+    const u64 now = (u64)(time_now_d() * 1000000.0);
+    const u64 previous = lastTime.exchange(now, std::memory_order_relaxed);
+
+    // Monster Hunter runs at 30 FPS, so normal packet intervals are
+    // approximately 33 ms. Report only suspicious gaps of 75 ms or more.
+    if (previous != 0 && now > previous && now - previous >= 75000) {
+        INFO_LOG(
+            Log::sceNet,
+            "SWITCH_NET_GAP %s gap=%llu us bytes=%d",
+            direction,
+            (unsigned long long)(now - previous),
+            bytes
+        );
+    }
+}
+#endif
 
 #define DISCOVER_DURATION_US	2000000 // 2 seconds is probably the normal time it takes for PSP to connect to a group (ie. similar to NetconfigDialog time)
 u64 netAdhocDiscoverStartTime = 0;
@@ -869,6 +896,9 @@ int DoBlockingPdpRecv(AdhocSocketRequest& req, s64& result) {
 		// UDP can also receives 0 data, while on TCP receiving 0 data = connection gracefully closed, but not sure whether PDP can send/recv 0 data or not tho
 		*req.length = 0;
 		if (ret >= 0) {
+#if PPSSPP_PLATFORM(SWITCH)
+			// Test 3: old RECV interval logger disabled.
+#endif
 			DEBUG_LOG(Log::sceNet, "sceNetAdhocPdpRecv[%i:%u]: Received %u bytes from %s:%u\n", req.id, getLocalPort(pdpsocket.id), ret, ip2str(sin.sin_addr).c_str(), ntohs(sin.sin_port));
 
 			// Find Peer MAC
@@ -994,11 +1024,48 @@ int DoBlockingPdpSend(AdhocSocketRequest& req, s64& result, AdhocSendTargets& ta
 				sockerr = EAGAIN;
 			}
 		} else {
-			ret = sendto(pdpsocket.id, (const char*)req.buffer, targetPeers.length, MSG_NOSIGNAL, (struct sockaddr*)&target, sizeof(target));
+			#if PPSSPP_PLATFORM(SWITCH)
+			const u64 switchSendCallStartUs =
+				(u64)(time_now_d() * 1000000.0);
+			#endif
+
+			ret = sendto(pdpsocket.id, (const char*)req.buffer,
+				targetPeers.length, MSG_NOSIGNAL,
+				(struct sockaddr*)&target, sizeof(target));
 			sockerr = socket_errno;
+
+			#if PPSSPP_PLATFORM(SWITCH)
+			const u64 switchSendCallEndUs =
+				(u64)(time_now_d() * 1000000.0);
+
+			const u64 switchSendCallUs =
+				switchSendCallEndUs - switchSendCallStartUs;
+
+			const u64 switchSendRequestUs =
+				req.startTime != 0 &&
+				switchSendCallEndUs >= req.startTime
+					? switchSendCallEndUs - req.startTime
+					: 0;
+
+			if (switchSendCallUs >= 2000 ||
+				switchSendRequestUs >= 20000) {
+				INFO_LOG(
+					Log::sceNet,
+					"SWITCH_SEND_TIMING call=%llu us request=%llu us bytes=%d ret=%d err=%d",
+					(unsigned long long)switchSendCallUs,
+					(unsigned long long)switchSendRequestUs,
+					targetPeers.length,
+					ret,
+					sockerr
+				);
+			}
+			#endif
 		}
 
 		if (ret >= 0) {
+#if PPSSPP_PLATFORM(SWITCH)
+			// Test 3: old SEND interval logger disabled.
+#endif
 			DEBUG_LOG(Log::sceNet, "sceNetAdhocPdpSend[%i:%u](B): Sent %u bytes to %s:%u\n", req.id, getLocalPort(pdpsocket.id), ret, ip2str(target.sin_addr).c_str(), ntohs(target.sin_port));
 			// Remove successfully sent to peer to prevent sending the same data again during a retry
 			peer = targetPeers.peers.erase(peer);
