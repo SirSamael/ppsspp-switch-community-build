@@ -94,48 +94,83 @@ The generated Nintendo Switch application can then be tested on compatible hardw
 
 ## Current Development Status
 
-This project is currently experimental.
-Current testing areas:
-PSP game compatibility
-Nintendo Switch performance
-Adhoc multiplayer stability
-Graphics compatibility
-Memory management improvements
-Not all PSP games are guaranteed to work correctly.
+- This project is currently experimental.
+- Current testing areas:
+- PSP game compatibility
+- Nintendo Switch performance
+- Adhoc multiplayer stability
+- Graphics compatibility
+- Memory management improvements
+- Not all PSP games are guaranteed to work correctly.
+
+---
+
+## Changes From Upstream
+
+This community build adds Nintendo Switch-focused changes:
+
+- libnx compatibility improvements
+- Switch-specific build fixes
+- OpenGL compatibility adjustments
+- Memory handling improvements
+- Adhoc multiplayer debugging tools
+- Network timing diagnostics
+
+---
 
 ## Known Issues
-Some games may have compatibility problems.
-Multiplayer testing is still ongoing.
-Performance may vary depending on the game.
-Some features may require further Switch-specific optimization.
+- Some games may have compatibility problems.
+- Multiplayer testing is still ongoing.
+- Performance may vary depending on the game.
+- Some features may require further Switch-specific optimization.
+
+---
 
 ## Submodule Patches
-Some Switch compatibility changes are stored as patch files.
-Location:
-patches/submodules/
+- Some Switch compatibility changes are stored as patch files.
+- Location:
+- patches/submodules:
 
 Apply them after initializing submodules:
-git -C ext/aemu_postoffice apply ../../patches/submodules/aemu_postoffice-switch.patch
+- git -C ext/aemu_postoffice apply ../../patches/submodules/aemu_postoffice-switch.patch
 
-git -C ext/glslang apply ../../patches/submodules/glslang-switch.patch
+- git -C ext/glslang apply ../../patches/submodules/glslang-switch.patch
 
-git -C ext/lua apply ../../patches/submodules/lua-switch.patch
+- git -C ext/lua apply ../../patches/submodules/lua-switch.patch
+
+---
 
 ## Credits
-Original PPSSPP Development
-The original PPSSPP emulator is developed by:
-Henrik Rydgård (hrydgard) and contributors
-Original repository:
-https://github.com/hrydgard/ppsspp
+- Original PPSSPP Development
+- The original PPSSPP emulator is developed by:
+- Henrik Rydgård (hrydgard) and contributors
+- Original repository:
+- https://github.com/hrydgard/ppsspp
+
+---
+
+## License
+
+This project follows the licensing terms of the original PPSSPP project.
+
+PPSSPP is licensed under the GPL-2.0-or-later license.
+
+Please respect the original PPSSPP license and contributors.
+
+---
 
 ## Nintendo Switch Community Build
-Nintendo Switch modifications, testing, and improvements:
-SirSamael
+- Nintendo Switch modifications, testing, and improvements:
+- SirSamael
+
+---
 
 ## Disclaimer
-This project is an unofficial community build.
-All trademarks and copyrights belong to their respective owners.
-Please support the original PPSSPP project.
+- This project is an unofficial community build.
+- All trademarks and copyrights belong to their respective owners.
+- Please support the original PPSSPP project.
+
+---
 
 ## Building For Nintendo Switch
 
