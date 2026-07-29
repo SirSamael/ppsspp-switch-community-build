@@ -1,3 +1,95 @@
+<!-- SWITCH-COMMUNITY-RELEASE-START -->
+
+# PPSSPP Switch Community Build v0.5.0 Beta
+
+An unofficial Nintendo Switch community build based on **PPSSPP v1.20.4**.
+
+This release focuses on Nintendo Switch compatibility, Adhoc multiplayer,
+video playback, audio output, input handling and application stability.
+
+## Major Fixes
+
+- Fixed missing game audio on Nintendo Switch.
+- Fixed buzzing and crackling game audio.
+- Added Nintendo Switch-specific 48,000 Hz audio output.
+- Added a stable 2048-sample SDL audio buffer.
+- Fixed green screens during startup videos and cutscenes.
+- Enabled system FFmpeg video decoding.
+- Added required static FFmpeg dependencies, including dav1d and bzip2.
+- Fixed invisible player models during tested Adhoc multiplayer sessions.
+- Improved player, monster and damage synchronization during tested quests.
+- Fixed multiplayer quest teleporting encountered during testing.
+- Fixed the grey screen when exiting PPSSPP to the Homebrew Menu.
+- Fixed crashes caused by external browser and market buttons.
+- External browser links are safely blocked on Nintendo Switch.
+- Fixed the software keyboard opening automatically during startup.
+- Native Nintendo Switch keyboard input still works for text-entry fields.
+- Fixed the PPSSPP icon shown in the Homebrew Menu.
+- Removed temporary multiplayer diagnostics that caused shutdown instability.
+
+## Tested Functionality
+
+Testing for this release was primarily performed using **Monster Hunter Portable 3rd (MHP3rd)**.
+
+- PPSSPP launches normally from the Homebrew Menu.
+- Monster Hunter Portable 3rd launches and runs successfully.
+- Game music and sound effects work.
+- Startup videos and in-game cutscenes work.
+- Cutscene audio works.
+- Adhoc multiplayer players can see each other in MHP3rd.
+- Multiplayer names and player models display correctly.
+- Multiplayer chat works.
+- Players can enter multiplayer quests.
+- Player movement synchronization works during tested quests.
+- Monster movement and damage synchronization work during tested quests.
+- Native Nintendo Switch keyboard input works.
+- PPSSPP exits cleanly to the Homebrew Menu.
+
+Testing results may differ with other PSP games.
+
+## Recommended Settings
+
+- CPU core: **JIT**
+- Graphics backend: **OpenGL ES**
+- Launch method: normal SD-card launch through the Homebrew Menu
+
+Do not use **JIT using IR**, because it may crash on Nintendo Switch.
+
+NetLoader and nxlink launching are not recommended for this build.
+
+## Known Issues
+
+- Minor delay or animation skipping may remain inside some multiplayer gathering halls.
+- Vulkan is not supported.
+- JIT using IR may be unstable.
+- NetLoader and nxlink launching may be unstable.
+- Compatibility and performance may vary between PSP games.
+
+## Development Approach
+
+PPSSPP Switch Community Build v0.5.0 Beta was developed through a
+**vibe-coding workflow using ChatGPT** for code research, debugging guidance,
+patch development, build troubleshooting, testing assistance and documentation.
+
+All source changes were reviewed, compiled, tested, packaged and released by
+**SirSamael**.
+
+## Disclaimer
+
+This is an unofficial community build.
+
+This project is not affiliated with or endorsed by OpenAI, Nintendo, Sony or
+the official PPSSPP project.
+
+No PSP games or copyrighted game files are included.
+
+See [BUILD_SWITCH.md](BUILD_SWITCH.md) for build instructions and
+[CHANGELOG.md](CHANGELOG.md) for release details.
+
+<!-- SWITCH-COMMUNITY-RELEASE-END -->
+
+---
+
 PPSSPP - a fast and portable PSP emulator
 =========================================
 
@@ -46,7 +138,7 @@ During this cycle, I've mostly focused on UX improvements.
 - Rendering fixes
   - Fix a bug in lens flare occlusion for the Syphon Filter games ([#21511])
   - Fix a bug in the software renderer ([#21648])
-  
+
 - Misc UI improvements
   - Instant type-to-search in game browser ([#21559], [#21565], [#21630])
   - Fix file picker problems on some Android devices (regression) ([#21614], [#21656])

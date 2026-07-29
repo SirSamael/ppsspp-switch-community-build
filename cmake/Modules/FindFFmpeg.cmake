@@ -102,7 +102,7 @@ function(find_ffmpeg LIBNAME)
     OR FFmpeg_INCLUDE_${LIBNAME} STREQUAL FFmpeg_INCLUDE_${LIBNAME}-NOTFOUND))
     # Didn't find it in the usual paths, try pkg-config
     find_package(PkgConfig QUIET)
-    pkg_check_modules(FFmpeg_PKGCONFIG_${LIBNAME} REQUIRED QUIET lib${LIBNAME})
+    pkg_check_modules(FFmpeg_PKGCONFIG_${LIBNAME} QUIET lib${LIBNAME})
 
     find_path(FFmpeg_INCLUDE_${LIBNAME} lib${LIBNAME}/${_FFmpeg_HEADER_${LIBNAME}}.h
       ${FFmpeg_PKGCONFIG_${LIBNAME}_INCLUDE_DIRS}

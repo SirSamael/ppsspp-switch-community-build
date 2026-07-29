@@ -12,6 +12,10 @@
 #include "Common/CommonTypes.h"
 #include "Common/Log.h"
 
+#ifdef BIT
+#undef BIT
+#endif
+
 #define DYNA_REC JIT
 
 #ifdef FMAX

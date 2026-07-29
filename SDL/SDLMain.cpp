@@ -26,7 +26,9 @@ SDLJoystick *joystick = NULL;
 #include <thread>
 #include <locale>
 
+#if !PPSSPP_PLATFORM(SWITCH)
 #include "ext/portable-file-dialogs/portable-file-dialogs.h"
+#endif
 
 #include "ext/imgui/imgui.h"
 #include "ext/imgui/imgui_impl_platform.h"
@@ -99,7 +101,11 @@ static int g_DesktopHeight = 0;
 static float g_DesktopDPI = 1.0f;
 static float g_ForcedDPI = 0.0f; // if this is 0.0f, use g_DesktopDPI
 static float g_RefreshRate = 60.f;
+#if PPSSPP_PLATFORM(SWITCH)
+static int g_sampleRate = 48000;
+#else
 static int g_sampleRate = 44100;
+#endif
 
 static bool g_rebootEmuThread = false;
 
@@ -135,7 +141,10 @@ int getDisplayNumber(void) {
 }
 
 void sdl_mixaudio_callback(void *userdata, Uint8 *stream, int len) {
-	NativeMix((short *)stream, len / (2 * 2), g_sampleRate, userdata);
+	// The Switch audio device normally runs at 48000 Hz.
+	// Use the actual rate returned by SDL when available.
+	const int outputRate = g_retFmt.freq > 0 ? g_retFmt.freq : g_sampleRate;
+	NativeMix((short *)stream, len / (2 * 2), outputRate, userdata);
 }
 
 static SDL_AudioDeviceID audioDev = 0;
@@ -147,7 +156,11 @@ static void InitSDLAudioDevice(const std::string &name = "") {
 	fmt.freq = g_sampleRate;
 	fmt.format = AUDIO_S16;
 	fmt.channels = 2;
+	#if PPSSPP_PLATFORM(SWITCH)
+	fmt.samples = 2048;
+#else
 	fmt.samples = std::max(g_Config.iSDLAudioBufferSize, 128);
+#endif
 	fmt.callback = &sdl_mixaudio_callback;
 	fmt.userdata = nullptr;
 
@@ -375,7 +388,7 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 		DarwinFileSystemServices::presentDirectoryPanel(callback, /* allowFiles = */ false, /* allowDirectories = */ true);
 		return true;
 	}
-#else
+#elif !PPSSPP_PLATFORM(SWITCH)
 	case SystemRequestType::BROWSE_FOR_IMAGE:
 	{
 		// TODO: Add non-blocking support.
@@ -511,10 +524,13 @@ void System_LaunchUrl(LaunchUrlType urlType, std::string_view url) {
 	case LaunchUrlType::MARKET_URL:
 	{
 #if PPSSPP_PLATFORM(SWITCH)
-		Uuid uuid = { 0 };
-		WebWifiConfig conf;
-		webWifiCreate(&conf, NULL, std::string(url).c_str(), uuid, 0);
-		webWifiShow(&conf, NULL);
+                // External browser launch disabled on Nintendo Switch.
+                // Browser applets are unstable in this port.
+                INFO_LOG(
+                        Log::System,
+                        "External link blocked on Nintendo Switch: %.*s",
+                        STR_VIEW(url)
+                );
 #elif defined(MOBILE_DEVICE)
 		INFO_LOG(Log::System, "Would have gone to %.*s but LaunchBrowser is not implemented on this platform", STR_VIEW(url));
 #elif defined(_WIN32)
@@ -761,7 +777,11 @@ case SYSPROP_HAS_FILE_BROWSER:
 #if PPSSPP_PLATFORM(MAC)
 		return true;
 #else
+#if PPSSPP_PLATFORM(SWITCH)
+		return false;
+#else
 		return pfd::settings::available();
+#endif
 #endif
 	case SYSPROP_HAS_ACCELEROMETER:
 #if defined(MOBILE_DEVICE)
@@ -1343,11 +1363,16 @@ static void ProcessSDLEvent(SDL_Window *window, const SDL_Event &event, InputSta
 void UpdateTextFocus() {
 	if (g_textFocusChanged) {
 		DEBUG_LOG(Log::System, "Updating text focus: %d", g_textFocus);
-		if (g_textFocus) {
-			SDL_StartTextInput();
-		} else {
-			SDL_StopTextInput();
-		}
+		#if PPSSPP_PLATFORM(SWITCH)
+                // SDL text input disabled on Nintendo Switch.
+                // Actual text-entry dialogs use the libnx swkbd applet.
+#else
+                if (g_textFocus) {
+                        SDL_StartTextInput();
+                } else {
+                        SDL_StopTextInput();
+                }
+#endif
 		g_textFocusChanged = false;
 	}
 }
@@ -1686,19 +1711,24 @@ int main(int argc, char *argv[]) {
 	if (g_Config.iGPUBackend == (int)GPUBackend::OPENGL) {
 		SDLGLGraphicsContext *glctx = new SDLGLGraphicsContext();
 		if (glctx->Init(window, x, y, w, h, mode, &error_message, force_gl_version) != 0) {
-			// Let's try the fallback once per process run.
+#if PPSSPP_PLATFORM(SWITCH)
+			fprintf(stderr, "OpenGL initialization failed: %s\n", error_message.c_str());
+			delete glctx;
+			return 1;
+#else
+			// Try Vulkan as a fallback on supported desktop platforms.
 			fprintf(stderr, "GL init error '%s' - falling back to Vulkan\n", error_message.c_str());
 			g_Config.iGPUBackend = (int)GPUBackend::VULKAN;
 			SetGPUBackend((GPUBackend)g_Config.iGPUBackend);
 			delete glctx;
 
-			// NOTE : This should match the lines below in the Vulkan case.
 			SDLVulkanGraphicsContext *vkctx = new SDLVulkanGraphicsContext();
 			if (!vkctx->Init(window, x, y, w, h, mode | SDL_WINDOW_VULKAN, &error_message)) {
 				fprintf(stderr, "Vulkan fallback failed: %s\n", error_message.c_str());
 				return 1;
 			}
 			graphicsContext = vkctx;
+#endif
 		} else {
 			graphicsContext = glctx;
 		}
