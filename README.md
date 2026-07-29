@@ -123,6 +123,12 @@ This community build adds Nintendo Switch-focused changes:
 - Multiplayer testing is still ongoing.
 - Performance may vary depending on the game.
 - Some features may require further Switch-specific optimization.
+- Software keyboard opened automatically at startup
+- Website and online-guide buttons crashed PPSSPP
+- “JIT using IR” crashes
+- NetLoader and nxlink instability
+- Missing or invalid Homebrew Menu icon
+- Green startup movies and cutscenes
 
 ---
 
