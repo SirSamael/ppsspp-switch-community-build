@@ -12,3 +12,6 @@
 
 # To avoid mucking up the utf-8 characters.
 Core/Dialog/PSPOskConstants.cpp binary
+
+# Patch contents may intentionally contain whitespace-sensitive added lines.
+*.patch -whitespace

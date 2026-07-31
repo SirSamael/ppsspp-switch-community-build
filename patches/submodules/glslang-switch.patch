@@ -1,7 +1,13 @@
 diff --git a/glslang/CMakeLists.txt b/glslang/CMakeLists.txt
-index 7d8790c4..9ee56526 100644
+index 7d8790c..9ee5652 100644
 --- a/glslang/CMakeLists.txt
 +++ b/glslang/CMakeLists.txt
-@@ -36 +36 @@ if(WIN32)
+@@ -33,7 +33,7 @@
+ 
+ if(WIN32)
+     add_subdirectory(OSDependent/Windows)
 -elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia")
 +elseif(UNIX OR "${CMAKE_SYSTEM_NAME}" STREQUAL "Fuchsia" OR USE_LIBNX)
+     add_subdirectory(OSDependent/Unix)
+ else()
+     message("unknown platform")

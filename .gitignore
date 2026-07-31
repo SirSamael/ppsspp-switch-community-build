@@ -151,3 +151,6 @@ RAPrefs_PPSSPP.cfg
 cmake-build-*/
 
 /.vscode/
+
+# Generated Nintendo Switch release packages
+/dist/

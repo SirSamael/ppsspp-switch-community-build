@@ -1,3 +1,89 @@
+# v0.6.0
+
+Stable Nintendo Switch community release based on PPSSPP v1.20.4.
+
+## Video Playback and FFmpeg
+
+- Replaced the incompatible devkitPro system FFmpeg configuration with an
+  isolated legacy FFmpeg build.
+- Pinned the PPSSPP FFmpeg submodule to commit
+  `82049cca2e4c1516ed00a77b502a21f91b7843f4`.
+- Uses `libavcodec 57.24.102` and the matching legacy FFmpeg libraries.
+- Fixed corrupted or green startup videos and cutscenes.
+- Fixed deterministic freezes encountered during video playback.
+- Added a reproducible FFmpeg 57 build script that installs into a local prefix
+  without overwriting devkitPro system libraries.
+
+## Audio
+
+- Uses a 48,000 Hz default Nintendo Switch audio output rate.
+- Passes the actual SDL output frequency to the PPSSPP audio mixer.
+- Uses a 2048-frame SDL audio buffer.
+- Fixed missing game audio.
+- Fixed buzzing and crackling encountered during testing.
+
+## Build and Packaging
+
+- Added an automated Nintendo Switch build and release packaging script.
+- Added verification for the required FFmpeg submodule revision.
+- Added automatic application and validation of the three Switch submodule
+  patches.
+- Added automatic NACP and NRO generation.
+- Added the tested 256×256 Homebrew Menu icon.
+- Added application metadata:
+  - Title: `PPSSPP Switch Community Build`
+  - Author: `SirSamael`
+  - Version: `0.6.0`
+- Added automatic creation of the SD-card ZIP archive and SHA-256 checksum.
+- Release packages use the required `switch/ppsspp/` directory structure.
+- Updated all build instructions to use isolated FFmpeg instead of
+  `USE_SYSTEM_FFMPEG=ON`.
+
+## Runtime Configuration
+
+- Regular JIT is the required CPU core for this release.
+- OpenGL ES is the supported graphics backend.
+- `JIT using IR` crashed every game in the current test set.
+- Vulkan is not supported by this community build.
+
+## Confirmed Test Results
+
+The following games were confirmed to launch and run:
+
+- Danball Senki Boost
+- God of War: Ghost of Sparta
+- Grand Theft Auto: Liberty City Stories
+- Tekken 6
+
+Street Fighter Alpha 3 MAX was also tested during the earlier investigation.
+
+## Performance
+
+- Overall performance remained comparable to the previously tested Nintendo
+  Switch build.
+- Grand Theft Auto: Liberty City Stories showed frequent frame drops.
+- Tekken 6 showed occasional frame drops.
+- Compatibility and performance vary by game.
+
+## Known Issues
+
+- `JIT using IR` crashes the currently tested games; use regular JIT.
+- Vulkan is not supported.
+- NetLoader and nxlink launching are not recommended.
+- The compatibility test set remains limited and does not guarantee that every
+  PSP game will work correctly.
+- Performance limitations and frame drops may occur in demanding games.
+
+## Development
+
+Nintendo Switch adaptation, compilation, device testing and release maintenance
+were performed by SirSamael.
+
+ChatGPT was used for research, debugging guidance, build investigation,
+documentation and release preparation.
+
+---
+
 # v0.5.0 Beta
 
 Experimental Nintendo Switch community beta release based on PPSSPP v1.20.4.
