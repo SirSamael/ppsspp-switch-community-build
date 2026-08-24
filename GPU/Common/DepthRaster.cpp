@@ -9,23 +9,37 @@
 #include "GPU/Common/VertexDecoderCommon.h"
 
 DepthScissor DepthScissor::Tile(int tile, int numTiles) const {
-	if (numTiles == 1) {
+	if (numTiles <= 1) {
 		return *this;
 	}
-	// First tiling algorithm: Split into vertical slices.
-	int w = x2 - x1;
-	int tileW = (w / numTiles) & ~3;  // Round to four pixels.
 
-	// TODO: Should round x1 to four pixels as well! except the first one
+	_dbg_assert_(tile >= 0 && tile < numTiles);
+
+	// V1204_PERF03_DEPTH_TILE_BOUNDARY_V1
+	//
+	// x1/x2 are inclusive. Internal boundaries are aligned
+	// to four pixels so SIMD stores from adjacent workers
+	// cannot overlap.
+	const int first = (int)x1;
+	const int lastExclusive = (int)x2 + 1;
+	const int width = lastExclusive - first;
+
+	const int rawStart = first + (width * tile) / numTiles;
+	const int rawEnd = first + (width * (tile + 1)) / numTiles;
+
+	const int start =
+		tile == 0 ? first : ((rawStart + 3) & ~3);
+
+	const int endExclusive =
+		tile == numTiles - 1 ? lastExclusive : ((rawEnd + 3) & ~3);
 
 	DepthScissor scissor;
-	scissor.x1 = x1 + tileW * tile;
-	scissor.x2 = (tile == numTiles - 1) ? x2 : (x1 + tileW * (tile + 1));
+	scissor.x1 = (u16)start;
+	scissor.x2 = (u16)(endExclusive - 1);
 	scissor.y1 = y1;
 	scissor.y2 = y2;
 	return scissor;
 }
-
 // x1/x2 etc are the scissor rect.
 static void DepthRasterRect(uint16_t *dest, int stride, const DepthScissor scissor, int v1x, int v1y, int v2x, int v2y, short depthValue, ZCompareMode compareMode) {
 	// Swap coordinates if needed, we don't back-face-cull rects.
@@ -566,7 +580,7 @@ int DepthRasterClipIndexedTriangles(int *tx, int *ty, float *tz, const float *tr
 }
 
 // Rasterizes screen-space vertices.
-void DepthRasterScreenVerts(uint16_t *depth, int depthStride, const int *tx, const int *ty, const float *tz, int count, const DepthDraw &draw, const DepthScissor scissor, bool lowQ) {
+void DepthRasterScreenVerts(uint16_t *depth, int depthStride, const int *tx, const int *ty, const float *tz, int count, const DepthDraw &draw, const DepthScissor scissor, bool lowQ, bool updateStats) {
 	// Prim should now be either TRIANGLES or RECTs.
 	_dbg_assert_(draw.prim == GE_PRIM_RECTANGLES || draw.prim == GE_PRIM_TRIANGLES);
 
@@ -578,7 +592,9 @@ void DepthRasterScreenVerts(uint16_t *depth, int depthStride, const int *tx, con
 			// We remove the subpixel information here.
 			DepthRasterRect(depth, depthStride, scissor, tx[i], ty[i], tx[i + 1], ty[i + 1], z, draw.compareMode);
 		}
-		gpuStats.numDepthRasterPrims += count / 2;
+		if (updateStats) {
+			gpuStats.numDepthRasterPrims += count / 2;
+		}
 		break;
 	case GE_PRIM_TRIANGLES:
 	{
@@ -633,9 +649,11 @@ void DepthRasterScreenVerts(uint16_t *depth, int depthStride, const int *tx, con
 			}
 			}
 		}
-		gpuStats.numDepthRasterNoPixels += stats[(int)TriangleStat::NoPixels];
-		gpuStats.numDepthRasterTooSmall += stats[(int)TriangleStat::SmallOrBackface];
-		gpuStats.numDepthRasterPrims += stats[(int)TriangleStat::OK];
+		if (updateStats) {
+			gpuStats.numDepthRasterNoPixels += stats[(int)TriangleStat::NoPixels];
+			gpuStats.numDepthRasterTooSmall += stats[(int)TriangleStat::SmallOrBackface];
+			gpuStats.numDepthRasterPrims += stats[(int)TriangleStat::OK];
+		}
 		break;
 	}
 	default:

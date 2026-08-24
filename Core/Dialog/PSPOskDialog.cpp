@@ -791,7 +791,7 @@ int PSPOskDialog::NativeKeyboard() {
 		return SCE_ERROR_UTILITY_INVALID_STATUS;
 	}
 
-#if defined(USING_WIN_UI) || defined(USING_QT_UI) || PPSSPP_PLATFORM(ANDROID)
+#if defined(USING_WIN_UI) || defined(USING_QT_UI) || PPSSPP_PLATFORM(ANDROID) || PPSSPP_PLATFORM(SWITCH)
 	bool beginInputBox = false;
 	if (nativeStatus_ == PSPOskNativeStatus::IDLE) {
 		std::lock_guard<std::mutex> guard(nativeMutex_);
@@ -891,8 +891,17 @@ int PSPOskDialog::Update(int animSpeed) {
 	// Windows: Fall back to the OSK/continue normally if we're in fullscreen.
 	// The dialog box doesn't work right if in fullscreen.
 	if (System_GetPropertyBool(SYSPROP_HAS_KEYBOARD)) {
+#if PPSSPP_PLATFORM(SWITCH)
+		// The Switch SDL build always runs fullscreen. Use the native
+		// keyboard only when the HOS swkbd applet is actually available.
+		// Otherwise fall back to PPSSPP's built-in PSP OSK.
+		if (g_Config.bBypassOSKWithKeyboard &&
+			System_GetPropertyBool(SYSPROP_HAS_TEXT_INPUT_DIALOG))
+			return NativeKeyboard();
+#else
 		if (g_Config.bBypassOSKWithKeyboard && !g_Config.bFullScreen)
 			return NativeKeyboard();
+#endif
 	}
 #endif
 

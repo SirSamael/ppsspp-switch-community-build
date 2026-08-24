@@ -1,4 +1,4 @@
-# PPSSPP Switch Community Build v0.6.0
+# PPSSPP Switch Community Build v0.6.5
 
 Build instructions for the Nintendo Switch community build based on PPSSPP v1.20.4.
 
@@ -45,7 +45,7 @@ Clone the repository and select the release branch:
 
     git clone --recursive https://github.com/SirSamael/ppsspp-switch-community-build.git
     cd ppsspp-switch-community-build
-    git switch release-v0.6.0
+    git switch release-v0.6.5
 
 For an existing clone:
 
@@ -62,7 +62,7 @@ The automated script performs the complete process:
 4. Builds FFmpeg 57 into an isolated local prefix.
 5. Configures and compiles PPSSPP.
 6. Generates the NACP metadata and NRO.
-7. Copies the generated 185-file asset set.
+7. Copies the generated 190-file asset set.
 8. Creates the SD-card ZIP and SHA-256 checksum.
 
 Run from the repository root:
@@ -71,8 +71,8 @@ Run from the repository root:
 
 Generated files:
 
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip.sha256
+    dist/v0.6.5/PPSSPP-Switch-0.6.5.zip
+    dist/v0.6.5/PPSSPP-Switch-0.6.5.zip.sha256
 
 The ZIP archive contains:
 
@@ -121,7 +121,7 @@ Run from the repository root:
 
     cmake \
       -S . \
-      -B build-switch-v0.6.0 \
+      -B build-switch-v0.6.5 \
       -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
@@ -145,31 +145,31 @@ Run from the repository root:
 
 ### 5. Compile PPSSPP
 
-    cmake --build build-switch-v0.6.0 --parallel 2
+    cmake --build build-switch-v0.6.5 --parallel 2
 
 Expected executable:
 
-    build-switch-v0.6.0/PPSSPPSDL.elf
+    build-switch-v0.6.5/PPSSPPSDL.elf
 
 Expected generated assets:
 
-    build-switch-v0.6.0/assets/
+    build-switch-v0.6.5/assets/
 
 ### 6. Generate Homebrew Metadata
 
     /opt/devkitpro/tools/bin/nacptool --create \
-      "PPSSPP Switch Community Build" \
-      "SirSamael" \
-      "0.6.0" \
-      build-switch-v0.6.0/PPSSPP.nacp
+      "PPSSPP" \
+      "PPSSPP Team" \
+      "0.6.5" \
+      build-switch-v0.6.5/PPSSPP.nacp
 
 ### 7. Generate the NRO
 
     /opt/devkitpro/tools/bin/elf2nro \
-      build-switch-v0.6.0/PPSSPPSDL.elf \
-      build-switch-v0.6.0/PPSSPP.nro \
+      build-switch-v0.6.5/PPSSPPSDL.elf \
+      build-switch-v0.6.5/PPSSPP.nro \
       --icon=icons/PPSSPP-icon.jpg \
-      --nacp=build-switch-v0.6.0/PPSSPP.nacp
+      --nacp=build-switch-v0.6.5/PPSSPP.nacp
 
 ## SD Card Installation
 
@@ -187,18 +187,15 @@ NetLoader and nxlink launching are not recommended for this release.
 
 ## Runtime Configuration
 
-Use:
+Recommended:
 
 - CPU core: JIT
 - Graphics backend: OpenGL ES
 
-Do not use:
+Version 0.6.5 includes the hardware-tested ARM64 IR/JIT cache-pointer
+correction. Regular JIT remains recommended for the widest compatibility.
 
-- JIT using IR
-- Vulkan
-
-`JIT using IR` crashed every game in the current test set. Regular JIT is the
-required CPU core for this release.
+Vulkan is not supported by this community build.
 
 ## Audio Configuration
 
@@ -214,7 +211,7 @@ testing.
 
 ## Tested Games
 
-The following games were confirmed to launch and run during v0.6.0 testing:
+The following games were confirmed to launch and run during v0.6.5 testing:
 
 - Danball Senki Boost
 - God of War: Ghost of Sparta

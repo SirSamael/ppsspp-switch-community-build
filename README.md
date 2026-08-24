@@ -7,18 +7,34 @@ Nintendo Switch compatibility, and a reproducible build process.
 
 ## Latest Release
 
-Current stable release:
+Current release:
 
-    v0.6.0
+    v0.6.5
 
 Application metadata:
 
-- Title: PPSSPP Switch Community Build
-- Author: SirSamael
-- Version: 0.6.0
+- Title: PPSSPP
+- Author: PPSSPP Team
+- Version: 0.6.5
 - Installation path: `/switch/ppsspp/`
 
 ## Main Improvements
+
+### Version 0.6.5 Fixes and Performance Work
+
+- Added hardware-tested ARM64 JIT cache-pointer preservation fixes.
+- Fixed the ARM64 IR/JIT cache-pointer crash path.
+- Added parallel software depth rasterization using non-overlapping,
+  four-pixel-aligned worker tiles.
+- Added Switch process-core detection for worker scheduling.
+- Added Switch readable memory aliases for affected texture and CLUT reads.
+- Fixed video swizzle-buffer ownership and initialization.
+- Fixed negative render-target offsets in the OpenGL ES shader path.
+- Fixed SDL trigger mapping and right-stick threshold behavior.
+- Improved native Switch keyboard and multilingual input support.
+- Added fallback fonts for CJK, Arabic, Hebrew, Thai and Lao.
+- Retains the validated FFmpeg and audio fixes from Version 0.6.0.
+
 
 ### Video and Cutscene Playback
 
@@ -99,24 +115,19 @@ Launch PPSSPP normally from the Homebrew Menu.
 
 ## Required Runtime Settings
 
-Use:
+Recommended:
 
 - CPU core: JIT
 - Graphics backend: OpenGL ES
 
-Do not use:
-
-- JIT using IR
-- Vulkan
-
-`JIT using IR` currently crashes every game in the tested compatibility set.
-Regular JIT is required.
+Version 0.6.5 includes the hardware-tested ARM64 IR/JIT cache-pointer
+correction. Regular JIT remains recommended for the widest compatibility.
 
 Vulkan is not supported by this community build.
 
 ## Tested Games
 
-The following games were confirmed to launch and run during final v0.6.0 testing:
+The following games were confirmed to launch and run during final v0.6.5 testing:
 
 - Danball Senki Boost
 - God of War: Ghost of Sparta
@@ -141,8 +152,9 @@ PSP game will work correctly.
 
 ## Known Issues
 
-- `JIT using IR` crashes currently tested games.
 - Vulkan is not supported.
+- Regular JIT remains recommended even though the tested ARM64 IR/JIT crash
+  path was corrected in Version 0.6.5.
 - NetLoader and nxlink launching are not recommended.
 - Some games may have performance or compatibility problems.
 - Adhoc multiplayer compatibility may vary between games and network
@@ -160,8 +172,8 @@ Recommended automated build command:
 
 The automated script generates:
 
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip.sha256
+    dist/v0.6.5/PPSSPP-Switch-0.6.5.zip
+    dist/v0.6.5/PPSSPP-Switch-0.6.5.zip.sha256
 
 The release archive contains:
 

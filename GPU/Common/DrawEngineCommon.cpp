@@ -25,6 +25,7 @@
 #include "Common/Math/CrossSIMD.h"
 #include "Common/Math/lin/matrix4x4.h"
 #include "Common/TimeUtil.h"
+#include "Common/Thread/ParallelLoop.h"
 #include "Core/System.h"
 #include "Core/Config.h"
 #include "GPU/GPUCommon.h"
@@ -1173,7 +1174,64 @@ void DrawEngineCommon::FlushQueuedDepth() {
 				continue;
 			}
 			u16 *depthPtr = (uint16_t *)Memory::GetPointerWriteUnchecked(draw.depthAddr);
-			DepthRasterScreenVerts(depthPtr, draw.depthStride, tx, ty, tz, outVertCount, draw, tileScissor, lowQ);
+			// V1204_PERF03_PARALLEL_DEPTH_RASTER_V1
+			//
+			// Clipping remains serial. Only the expensive pixel raster
+			// stage is divided into disjoint vertical tiles. Every draw
+			// waits for all workers before continuing, preserving depth
+			// and draw ordering.
+			const int workerCount = g_threadManager.GetNumLooperThreads();
+			const int scissorWidth =
+				(int)draw.scissor.x2 - (int)draw.scissor.x1 + 1;
+
+			int tileCount = std::min(workerCount, 4);
+			tileCount = std::min(
+				tileCount,
+				std::max(1, scissorWidth / 64));
+
+			const bool parallelDepth =
+				!collectStats &&
+				draw.prim == GE_PRIM_TRIANGLES &&
+				outVertCount >= 12 &&
+				tileCount > 1;
+
+			if (parallelDepth) {
+				WaitableCounter *counter = RunParallel(
+					&g_threadManager,
+					[=, &draw](int tile, int numTiles) {
+						const DepthScissor workerScissor =
+							draw.scissor.Tile(tile, numTiles);
+
+						DepthRasterScreenVerts(
+							depthPtr,
+							draw.depthStride,
+							tx,
+							ty,
+							tz,
+							outVertCount,
+							draw,
+							workerScissor,
+							lowQ,
+							false);
+					},
+					tileCount,
+					TaskPriority::HIGH);
+
+				if (counter) {
+					counter->WaitAndRelease();
+				}
+			} else {
+				DepthRasterScreenVerts(
+					depthPtr,
+					draw.depthStride,
+					tx,
+					ty,
+					tz,
+					outVertCount,
+					draw,
+					tileScissor,
+					lowQ);
+			}
 		}
 	}
 

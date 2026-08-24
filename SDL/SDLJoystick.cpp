@@ -201,24 +201,41 @@ void SDLJoystick::ProcessInput(const SDL_Event &event){
 	case SDL_CONTROLLERAXISMOTION:
 	{
 		InputDeviceID deviceId = DEVICE_ID_PAD_0 + getDeviceIndex(event.caxis.which);
-		// TODO: Can we really cast axis IDs like that? Do they match?
-		InputAxis axisId = (InputAxis)event.caxis.axis;
+                // Keep SDL stick axis IDs unchanged.
+                // SDL RIGHTX/RIGHTY are historically stored as axes 2/3
+                // in PPSSPP SDL controller mappings (4004-4007).
+                InputAxis axisId = (InputAxis)event.caxis.axis;
+
+                // Control Fix 02: SDL trigger IDs do not match PPSSPP's
+                // canonical trigger InputAxis IDs.
+                if (event.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT) {
+                        axisId = JOYSTICK_AXIS_LTRIGGER;
+                } else if (event.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT) {
+                        axisId = JOYSTICK_AXIS_RTRIGGER;
+                }
 		float value = event.caxis.value * (1.f / 32767.f);
 		if (value > 1.0f) value = 1.0f;
 		if (value < -1.0f) value = -1.0f;
 		// Filter duplicate axis values.
 		auto key = std::pair<InputDeviceID, InputAxis>(deviceId, axisId);
 		auto iter = prevAxisValue_.find(key);
+		bool axisChanged = false;
+
 		if (iter == prevAxisValue_.end()) {
 			prevAxisValue_[key] = value;
+			axisChanged = true;
 		} else if (iter->second != value) {
 			iter->second = value;
+			axisChanged = true;
+		}
+
+		if (axisChanged) {
 			AxisInput axis;
 			axis.axisId = axisId;
 			axis.value = value;
 			axis.deviceId = deviceId;
 			NativeAxis(&axis, 1);
-		}  // else ignore event.
+		}
 		break;
 	}
 	case SDL_CONTROLLERDEVICEREMOVED:

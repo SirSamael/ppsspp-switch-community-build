@@ -457,6 +457,15 @@ void LinkedShader::UpdateUniforms(const ShaderID &vsid, bool useBufferedRenderin
 		} else {
 			proj_through.setOrtho(0.0f, gstate_c.curRTWidth, gstate_c.curRTHeight, 0.0f, 0.0f, 1.0f);
 		}
+
+		// Negative render-target offsets are intentionally excluded from the
+		// host viewport for split framebuffers. Compensate in the through
+		// projection, matching the common uniform-buffer path.
+		if (gstate_c.curRTOffsetX < 0 || gstate_c.curRTOffsetY < 0) {
+			proj_through.wx += 2.0f * (float)gstate_c.curRTOffsetX / (float)gstate_c.curRTWidth;
+			proj_through.wy += 2.0f * (float)gstate_c.curRTOffsetY / (float)gstate_c.curRTHeight;
+		}
+
 		render_->SetUniformM4x4(&u_proj_through, proj_through.getReadPtr());
 	}
 	if (dirty & DIRTY_TEXENV) {

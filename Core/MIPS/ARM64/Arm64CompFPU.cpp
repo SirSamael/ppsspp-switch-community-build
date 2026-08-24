@@ -91,10 +91,21 @@ void Arm64Jit::Comp_FPULS(MIPSOpcode op)
 	switch (op >> 26) {
 	case 49: //FI(ft) = Memory::Read_U32(addr); break; //lwc1
 		if (!gpr.IsImm(rs) && jo.cachePointers && g_Config.bFastMemory && (offset & 3) == 0 && offset <= 16380 && offset >= 0) {
-			gpr.MapRegAsPointer(rs);
-			fpr.MapReg(ft, MAP_NOINIT | MAP_DIRTY);
-			fp.LDR(32, INDEX_UNSIGNED, fpr.R(ft), gpr.RPtr(rs), offset);
-			break;
+			gpr.MapReg(rs);
+			gpr.SpillLock(rs);
+			ARM64Reg allfixSavedRs = gpr.GetAndLockTempR();
+			if (allfixSavedRs != INVALID_REG) {
+				// V1204_ALLFIX01_PRESERVE_GPR_CACHE_POINTER_V1
+				MOV(allfixSavedRs, gpr.R(rs));
+				gpr.MapRegAsPointer(rs);
+				fpr.MapReg(ft, MAP_NOINIT | MAP_DIRTY);
+				fp.LDR(32, INDEX_UNSIGNED, fpr.R(ft), gpr.RPtr(rs), offset);
+				gpr.MapReg(rs);
+				MOV(gpr.R(rs), allfixSavedRs);
+				gpr.ReleaseSpillLocksAndDiscardTemps();
+				break;
+			}
+			gpr.ReleaseSpillLocksAndDiscardTemps();
 		}
 
 		fpr.SpillLock(ft);
@@ -123,10 +134,21 @@ void Arm64Jit::Comp_FPULS(MIPSOpcode op)
 
 	case 57: //Memory::Write_U32(FI(ft), addr); break; //swc1
 		if (!gpr.IsImm(rs) && jo.cachePointers && g_Config.bFastMemory && (offset & 3) == 0 && offset <= 16380 && offset >= 0) {
-			gpr.MapRegAsPointer(rs);
-			fpr.MapReg(ft, 0);
-			fp.STR(32, INDEX_UNSIGNED, fpr.R(ft), gpr.RPtr(rs), offset);
-			break;
+			gpr.MapReg(rs);
+			gpr.SpillLock(rs);
+			ARM64Reg allfixSavedRs = gpr.GetAndLockTempR();
+			if (allfixSavedRs != INVALID_REG) {
+				// V1204_ALLFIX01_PRESERVE_GPR_CACHE_POINTER_V1
+				MOV(allfixSavedRs, gpr.R(rs));
+				gpr.MapRegAsPointer(rs);
+				fpr.MapReg(ft, 0);
+				fp.STR(32, INDEX_UNSIGNED, fpr.R(ft), gpr.RPtr(rs), offset);
+				gpr.MapReg(rs);
+				MOV(gpr.R(rs), allfixSavedRs);
+				gpr.ReleaseSpillLocksAndDiscardTemps();
+				break;
+			}
+			gpr.ReleaseSpillLocksAndDiscardTemps();
 		}
 
 		fpr.MapReg(ft);

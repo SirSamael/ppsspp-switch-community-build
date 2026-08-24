@@ -1,0 +1,4 @@
+PPSSPP Switch
+Version: 0.6.5
+Runtime: /switch/ppsspp/
+Baseline: PERF03 depth tiles with hardware-passed ARM64 IR/JIT fix

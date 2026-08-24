@@ -167,6 +167,29 @@ void TextDrawerSDL::PrepareFallbackFonts(std::string_view locale) {
 	if (os) {
 		FcObjectSetDestroy(os);
 	}
+#elif PPSSPP_PLATFORM(SWITCH)
+	// The Switch build has no Fontconfig service.  Instead, expose TTF
+	// files placed directly in the external PPSSPP assets directory as
+	// fallback fonts through PPSSPP's VFS.
+	//
+	// Use "." rather than an empty VFS path so an empty-prefix
+	// DirectoryReader can be routed correctly.
+	std::vector<File::FileInfo> fontFiles;
+	if (g_VFS.GetFileListing(".", &fontFiles, "ttf:TTF")) {
+		for (const auto &fontFile : fontFiles) {
+			if (!fontFile.isDirectory) {
+				fallbackFontPaths_.emplace_back(fontFile.name, 0);
+			}
+		}
+
+		INFO_LOG(
+			Log::G3D,
+			"Switch: registered %d local TTF fallback font(s) from assets",
+			(int)fallbackFontPaths_.size()
+		);
+	} else {
+		WARN_LOG(Log::G3D, "Switch: unable to enumerate local TTF fonts from assets");
+	}
 #elif PPSSPP_PLATFORM(MAC)
 	const char *fontDirs[] = {
 		"/System/Library/Fonts/",
@@ -261,14 +284,48 @@ int TextDrawerSDL::FindFallbackFonts(uint32_t missingGlyph, int ptSize) {
 		std::string& fontPath = fallbackFontPaths_[i].first;
 		int faceIndex = fallbackFontPaths_[i].second;
 
-		TTF_Font *font = TTF_OpenFontIndex(fontPath.c_str(), ptSize, faceIndex);
+#if PPSSPP_PLATFORM(SWITCH)
+		size_t fileSz = 0;
+		uint8_t *fileData = g_VFS.ReadFile(fontPath, &fileSz);
+		TTF_Font *font = nullptr;
 
-		if (TTF_GlyphIsProvided32(font, missingGlyph)) {
+		if (fileData && fileSz > 0 && fileSz <= 0x7FFFFFFF) {
+			SDL_RWops *rw = SDL_RWFromMem(
+				fileData,
+				static_cast<int>(fileSz)
+			);
+
+			if (rw) {
+				font = TTF_OpenFontIndexRW(
+					rw,
+					1,
+					ptSize,
+					faceIndex
+				);
+			}
+		}
+
+		if (font && TTF_GlyphIsProvided32(font, missingGlyph)) {
 			fallbackFonts_.push_back(font);
+			fallbackFontData_.push_back(fileData);
 			return fallbackFonts_.size() - 1;
-		} else {
+		}
+
+		if (font) {
 			TTF_CloseFont(font);
 		}
+
+		delete[] fileData;
+#else
+		TTF_Font *font = TTF_OpenFontIndex(fontPath.c_str(), ptSize, faceIndex);
+
+		if (font && TTF_GlyphIsProvided32(font, missingGlyph)) {
+			fallbackFonts_.push_back(font);
+			return fallbackFonts_.size() - 1;
+		} else if (font) {
+			TTF_CloseFont(font);
+		}
+#endif
 	}
 
 	// Not found at all? Let's remember that for this glyph.
@@ -456,6 +513,15 @@ void TextDrawerSDL::ClearFonts() {
 			TTF_CloseFont(iter);
 		}
 	}
+
+#if PPSSPP_PLATFORM(SWITCH)
+	// TTF_CloseFont closes the SDL_RWops first.  The memory supplied by
+	// SDL_RWFromMem remains ours and can now safely be released.
+	for (auto data : fallbackFontData_) {
+		delete[] data;
+	}
+	fallbackFontData_.clear();
+#endif
 
 	// We wipe all the maps, including fontMap_.
 	fontMap_.clear();

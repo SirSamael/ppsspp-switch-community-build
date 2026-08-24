@@ -958,8 +958,10 @@ int MediaEngine::writeVideoImageWithRange(u32 bufferPtr, int frameWidth, int vid
 
 	bool swizzle = Memory::IsVRAMAddress(bufferPtr) && (bufferPtr & 0x00200000) == 0x00200000;
 	if (swizzle) {
-		imgbuf = new u8[videoImageSize];
+		imgbuf = new u8[videoImageSize]();
 	}
+
+	const u8 *imgbufBase = imgbuf;
 
 	if (width > m_desWidth - xpos)
 		width = m_desWidth - xpos;
@@ -1016,8 +1018,8 @@ int MediaEngine::writeVideoImageWithRange(u32 bufferPtr, int frameWidth, int vid
 		if (byc == 0)
 			byc = 1;
 
-		DoSwizzleTex16((const u32 *)imgbuf, buffer, bxc, byc, videoLineSize);
-		delete [] imgbuf;
+		DoSwizzleTex16((const u32 *)imgbufBase, buffer, bxc, byc, videoLineSize);
+		delete [] imgbufBase;
 	}
 	NotifyMemInfo(MemBlockFlags::WRITE, bufferPtr, videoImageSize, "VideoDecodeRange");
 

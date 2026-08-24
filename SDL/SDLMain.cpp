@@ -334,6 +334,10 @@ bool System_MakeRequest(SystemRequestType type, int requestId, const std::string
 			char buf[LIBNX_SWKBD_LIMIT] = {'\0'};
 			swkbdConfigMakePresetDefault(&kbd);
 
+			// Allow the Switch system IME to expose all installed
+			// language keyboards, including Japanese/Chinese/Korean.
+			swkbdConfigSetType(&kbd, SwkbdType_All);
+
 			swkbdConfigSetHeaderText(&kbd, param1.c_str());
 			swkbdConfigSetInitialText(&kbd, param2.c_str());
 
@@ -754,7 +758,7 @@ bool System_GetPropertyBool(SystemProperty prop) {
 		return true;
 #if PPSSPP_PLATFORM(SWITCH)
 	case SYSPROP_HAS_TEXT_INPUT_DIALOG:
-		return __nx_applet_type == AppletType_Application || __nx_applet_type != AppletType_SystemApplication;
+		return __nx_applet_type == AppletType_Application || __nx_applet_type == AppletType_SystemApplication;
 #endif
 	case SYSPROP_HAS_KEYBOARD:
 		return true;
@@ -1650,6 +1654,7 @@ int main(int argc, char *argv[]) {
 	// Mac / Linux
 	char path[2048];
 #if PPSSPP_PLATFORM(SWITCH)
+	// VERSION_0_6_5_SWITCH_RUNTIME_PATH
 	strcpy(path, "/switch/ppsspp/");
 #else
 	const char *the_path = getenv("HOME");

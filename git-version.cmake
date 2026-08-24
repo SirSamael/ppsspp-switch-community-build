@@ -1,5 +1,6 @@
 set(GIT_VERSION_FILE "${OUTPUT_DIR}/git-version.cpp")
-set(GIT_VERSION "unknown")
+# VERSION_0_6_5_FIXED_MENU_VERSION
+set(GIT_VERSION "0.6.5")
 set(GIT_VERSION_UPDATE "1")
 
 find_package(Git)
@@ -36,7 +37,7 @@ endif()
 set(code_string "// This is a generated file.\n\n"
 	"const char *PPSSPP_GIT_VERSION = \"${GIT_VERSION}\"\;\n\n"
 	"// If you don't want this file to update/recompile, change to 1.\n"
-	"#define PPSSPP_GIT_VERSION_NO_UPDATE 0\n")
+	"#define PPSSPP_GIT_VERSION_NO_UPDATE 1\n")
 
 if ("${GIT_VERSION_UPDATE}" EQUAL "1")
 	file(WRITE ${GIT_VERSION_FILE} ${code_string})

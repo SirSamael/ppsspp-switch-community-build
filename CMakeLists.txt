@@ -1542,7 +1542,14 @@ else()
 		message(WARNING "Found SDL2_ttf <2.0.18 - this is too old, falling back to atlas")
 	endif()
 	if(SDL2_ttf_FOUND)
-		list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf)
+		if(TARGET SDL2_ttf::SDL2_ttf)
+			list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf)
+		elseif(TARGET SDL2_ttf::SDL2_ttf-static)
+			# Static-only platforms such as the devkitPro Switch portlib.
+			list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf-static)
+		else()
+			message(FATAL_ERROR "SDL2_ttf was found, but no supported SDL2_ttf CMake target exists")
+		endif()
 	elseif(SDL2_ttf_PKGCONFIG_FOUND)
 		list(APPEND nativeExtraLibs PkgConfig::SDL2_ttf_PKGCONFIG)
 	endif()
@@ -2924,6 +2931,11 @@ set(NativeAssets
 	assets/Roboto_Condensed-Bold.ttf
 	assets/Roboto_Condensed-Italic.ttf
 	assets/Inconsolata-Regular.ttf
+	assets/NotoSansCJKjp-VF.ttf
+	assets/NotoSansArabic-Regular.ttf
+	assets/NotoSansHebrew-Regular.ttf
+	assets/NotoSansThai-Regular.ttf
+	assets/NotoSansLao-Regular.ttf
 	assets/compat.ini
 	assets/adhoc-servers.json
 	assets/infra-dns.json

@@ -44,6 +44,14 @@
 #include "GPU/GPUState.h"
 #include "Core/Util/PPGeDraw.h"
 
+
+#if PPSSPP_PLATFORM(SWITCH)
+extern "C" const void *SwitchResolveMappedViewReadAlias(
+        const void *address
+);
+#endif
+
+
 // Videos should be updated every few frames, so we forget quickly.
 #define VIDEO_DECIMATE_AGE 4
 
@@ -1496,6 +1504,77 @@ void TextureCacheCommon::LoadClut(u32 clutAddr, u32 loadBytes, GPURecord::Record
 			}
 		}
 #elif PPSSPP_ARCH(ARM_NEON)
+
+#if PPSSPP_PLATFORM(SWITCH)
+		// SWITCH_CLUT_READ_ALIAS_04_MAINRAM_NEON
+		//
+		// Fix Candidate 04:
+		// preserve Candidate 03's main-RAM readable alias,
+		// but restore the normal ARM NEON CLUT copy path.
+		const u8 *normalSource =
+			Memory::GetPointerUnchecked(clutAddr);
+
+		const bool useMainRamReadAlias =
+			clutAddr >= 0x08000000 &&
+			clutAddr < 0x0A000000;
+
+		const void *resolvedSource =
+			useMainRamReadAlias
+			? SwitchResolveMappedViewReadAlias(
+				normalSource
+			  )
+			: nullptr;
+
+		const u8 *source =
+			resolvedSource
+			? reinterpret_cast<const u8 *>(
+				resolvedSource
+			  )
+			: normalSource;
+
+		if (bytes == loadBytes) {
+			const uint32_t *source32 =
+				reinterpret_cast<const uint32_t *>(
+					source
+				);
+
+			uint32_t *dest =
+				reinterpret_cast<uint32_t *>(
+					clutBufRaw_
+				);
+
+			int numBlocks = bytes / 32;
+
+			for (
+				int i = 0;
+				i < numBlocks;
+				i++, source32 += 8, dest += 8
+			) {
+				uint32x4_t data1 =
+					vld1q_u32(source32);
+
+				uint32x4_t data2 =
+					vld1q_u32(source32 + 4);
+
+				vst1q_u32(dest, data1);
+				vst1q_u32(dest + 4, data2);
+			}
+		} else {
+			memcpy(
+				clutBufRaw_,
+				source,
+				bytes
+			);
+
+			if (bytes < loadBytes) {
+				memset(
+					(u8 *)clutBufRaw_ + bytes,
+					0x00,
+					loadBytes - bytes
+				);
+			}
+		}
+#else
 		if (bytes == loadBytes) {
 			const uint32_t *source = (const uint32_t *)Memory::GetPointerUnchecked(clutAddr);
 			uint32_t *dest = (uint32_t *)clutBufRaw_;
@@ -1512,6 +1591,7 @@ void TextureCacheCommon::LoadClut(u32 clutAddr, u32 loadBytes, GPURecord::Record
 				memset((u8 *)clutBufRaw_ + bytes, 0x00, loadBytes - bytes);
 			}
 		}
+#endif
 #else
 		Memory::MemcpyUnchecked(clutBufRaw_, clutAddr, bytes);
 		if (bytes < loadBytes) {

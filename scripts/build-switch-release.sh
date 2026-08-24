@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-VERSION="0.6.0"
-RELEASE_NAME="PPSSPP-Switch-Community-Build-v${VERSION}"
+VERSION="0.6.5"
+RELEASE_NAME="PPSSPP-Switch-${VERSION}"
 
 BUILD="$ROOT/build-switch-v${VERSION}"
 FFMPEG_PREFIX="$ROOT/build-switch-ffmpeg57-prefix"
@@ -160,8 +160,8 @@ echo
 echo "=== GENERATING HOMEBREW METADATA ==="
 
 "$NACPTOOL" --create \
-  "PPSSPP Switch Community Build" \
-  "SirSamael" \
+  "PPSSPP" \
+  "PPSSPP Team" \
   "$VERSION" \
   "$NACP"
 
@@ -179,6 +179,16 @@ if [ ! -f "$NRO" ]; then
   return 1 2>/dev/null || false
 fi
 
+if ! strings "$NRO" | grep -qxF "$VERSION"; then
+  echo "ERROR: Packaged NRO does not contain exact Version $VERSION metadata."
+  return 1 2>/dev/null || false
+fi
+
+if ! strings "$NRO" | grep -qxF "/switch/ppsspp/"; then
+  echo "ERROR: Packaged NRO does not contain the standard runtime path."
+  return 1 2>/dev/null || false
+fi
+
 echo
 echo "=== CREATING SD-CARD PACKAGE ==="
 
@@ -192,8 +202,8 @@ ASSET_COUNT="$(find "$APP_DIR/assets" -type f | wc -l | tr -d ' ')"
 
 echo "Packaged asset files: $ASSET_COUNT"
 
-if [ "$ASSET_COUNT" -ne 185 ]; then
-  echo "ERROR: Expected 185 generated asset files."
+if [ "$ASSET_COUNT" -ne 190 ]; then
+  echo "ERROR: Expected 190 generated asset files."
   return 1 2>/dev/null || false
 fi
 

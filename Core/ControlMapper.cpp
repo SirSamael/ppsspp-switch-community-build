@@ -44,6 +44,39 @@ float ControlMapper::GetDeviceAxisThreshold(int device, const InputMapping &mapp
 	if (device == DEVICE_ID_MOUSE) {
 		return AXIS_BIND_THRESHOLD_MOUSE;
 	}
+#if defined(__SWITCH__)
+        // Switch SDL right stick uses historical raw axis IDs 2/3.
+        // In PPSSPP's generic InputAxis enum those numeric IDs are named
+        // PRESSURE/SIZE, so GetAxisType() normally classifies them as OTHER.
+        //
+        // Treat only generic Switch SDL pads' axes 2/3 as a stick pair here.
+        // This preserves existing 4004-4007 mappings while restoring the
+        // diagonal threshold bias used for analog-stick-to-button/D-Pad input.
+        if (mapping.IsAxis() &&
+                device >= DEVICE_ID_PAD_0 &&
+                device <= DEVICE_ID_PAD_9) {
+                const InputAxis axis = (InputAxis)mapping.Axis(nullptr);
+
+                if (axis == JOYSTICK_AXIS_PRESSURE ||
+                        axis == JOYSTICK_AXIS_SIZE) {
+                        const InputAxis coAxis =
+                                axis == JOYSTICK_AXIS_PRESSURE ?
+                                JOYSTICK_AXIS_SIZE :
+                                JOYSTICK_AXIS_PRESSURE;
+
+                        const float absCoValue =
+                                fabsf(rawAxisValue_[(int)coAxis]);
+
+                        if (absCoValue > 0.0f) {
+                                return g_Config.fAnalogStickThreshold *
+                                        (1.0f - absCoValue * 0.35f);
+                        }
+
+                        return g_Config.fAnalogStickThreshold;
+                }
+        }
+#endif
+
 	if (mapping.IsAxis()) {
 		switch (KeyMap::GetAxisType((InputAxis)mapping.Axis(nullptr))) {
 		case KeyMap::AxisType::TRIGGER:

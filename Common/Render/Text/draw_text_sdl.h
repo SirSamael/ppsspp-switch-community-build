@@ -37,6 +37,11 @@ private:
 
 	std::vector<TTF_Font *> fallbackFonts_;
 	std::vector<std::pair<std::string, int>> fallbackFontPaths_; // path and font face index
+#if PPSSPP_PLATFORM(SWITCH)
+	// SDL_ttf keeps the RWops alive for an opened font, so the VFS
+	// memory backing each loaded fallback font must stay alive too.
+	std::vector<uint8_t *> fallbackFontData_;
+#endif
 
 	std::map<int, int> glyphFallbackFontIndex_;
 

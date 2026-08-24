@@ -45,6 +45,10 @@
 
 #include "Common/CommonTypes.h"
 #include "Common/CPUDetect.h"
+
+#if PPSSPP_PLATFORM(SWITCH)
+#include <switch.h>
+#endif
 #include "Common/StringUtils.h"
 #include "Common/File/FileUtil.h"
 #include "Common/Data/Encoding/Utf8.h"
@@ -297,6 +301,19 @@ void CPUInfo::Detect()
 	SYSTEM_INFO sysInfo;
 	GetSystemInfo(&sysInfo);
 	num_cores = sysInfo.dwNumberOfProcessors;
+#elif PPSSPP_PLATFORM(SWITCH)
+	strcpy(brand_string, "Unknown");
+	uint64_t coreMask = 0;
+	Result coreMaskResult = svcGetInfo(&coreMask, InfoType_CoreMask, CUR_PROCESS_HANDLE, 0);
+	if (R_SUCCEEDED(coreMaskResult)) {
+		num_cores = __builtin_popcountll(coreMask);
+		if (num_cores < 1) {
+			num_cores = 1;
+		}
+	} else {
+		num_cores = 1;
+	}
+	// V1204_PERF02_SWITCH_PROCESS_COREMASK_V1
 #else // !PPSSPP_PLATFORM(IOS) && !PPSSPP_PLATFORM(MAC) && !PPSSPP_PLATFORM(WINDOWS)
 	strcpy(brand_string, "Unknown");
 	num_cores = 1;

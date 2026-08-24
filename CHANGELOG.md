@@ -1,3 +1,70 @@
+# v0.6.5
+
+Nintendo Switch community release based on PPSSPP v1.20.4.
+
+## ARM64 JIT and Memory Corrections
+
+- Added cache-pointer preservation fixes to ARM64 FPU and VFPU load/store
+  compilation paths.
+- Corrected the tested ARM64 IR/JIT cache-pointer crash path.
+- Added Switch readable source-alias tracking for affected memory mappings.
+- Corrected affected main-RAM texture and CLUT reads.
+- Improved backing-memory initialization and alias lifecycle handling.
+
+## Software Depth Performance
+
+- Added parallel software depth rasterization.
+- Uses non-overlapping, four-pixel-aligned vertical worker tiles.
+- Prevents worker threads from racing on shared raster statistics.
+- Uses the Nintendo Switch process core mask for worker scheduling.
+- Retains serial clipping and draw ordering.
+
+## Input and Interface
+
+- Corrected SDL trigger translation and default trigger mapping.
+- Restored right-stick diagonal threshold handling.
+- Improved native Switch software-keyboard availability.
+- Enabled multilingual Switch keyboard input.
+- Added fallback fonts for CJK, Arabic, Hebrew, Thai and Lao.
+
+## Graphics, Video and Compatibility
+
+- Fixed video swizzle-buffer initialization and ownership.
+- Corrected negative render-target offsets in the OpenGL ES shader path.
+- Retains the validated FFmpeg 57 video and 48 kHz audio configuration.
+- Excludes DIAG13 timing overlays and diagnostic instrumentation.
+
+## Packaging
+
+- Application name: `PPSSPP`
+- Author: `PPSSPP Team`
+- Version: `0.6.5`
+- Installation path: `/switch/ppsspp/`
+- Includes the tested PPSSPP Homebrew Menu icon.
+- Includes 190 generated runtime asset files.
+- Release archive: `PPSSPP-Switch-0.6.5.zip`
+
+## Testing
+
+Version 0.6.5 was built and tested successfully on Nintendo Switch hardware.
+Regular JIT remains recommended for the widest compatibility.
+
+## Known Limitations
+
+- Vulkan is not supported.
+- NetLoader and nxlink launching are not recommended.
+- Compatibility and performance vary by game.
+
+## Development
+
+Nintendo Switch adaptation, compilation, device testing and release maintenance
+were performed by SirSamael.
+
+ChatGPT was used for research, debugging guidance, build investigation,
+documentation and release preparation.
+
+---
+
 # v0.6.0
 
 Stable Nintendo Switch community release based on PPSSPP v1.20.4.

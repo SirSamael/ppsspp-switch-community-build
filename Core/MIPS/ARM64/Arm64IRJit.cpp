@@ -47,6 +47,8 @@ Arm64JitBackend::Arm64JitBackend(JitOptions &jitopt, IRBlockCache &blocks)
 	jo.optimizeForInterpreter = false;
 #ifdef MASKED_PSP_MEMORY
 	jo.enablePointerify = false;
+	// V1204_IRJIT_FIX01_DISABLE_CACHE_POINTERS_V1
+	jo.cachePointers = false;
 #endif
 
 	// Since we store the offset, this is as big as it can be.
