@@ -9,7 +9,7 @@ Nintendo Switch compatibility, and a reproducible build process.
 
 Current stable release:
 
-    v0.6.0
+    v0.6.5
 
 Application metadata:
 
