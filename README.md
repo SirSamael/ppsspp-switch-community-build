@@ -15,7 +15,7 @@ Application metadata:
 
 - Title: PPSSPP Switch Community Build
 - Author: SirSamael
-- Version: 0.6.0
+- Version: 0.6.5
 - Installation path: `/switch/ppsspp/`
 
 ## Main Improvements
