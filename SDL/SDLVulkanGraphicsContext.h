@@ -19,7 +19,7 @@ class SDLVulkanGraphicsContext : public GraphicsContext {
 public:
 	SDLVulkanGraphicsContext() {}
 	~SDLVulkanGraphicsContext() {
-		delete draw_;
+		DestroyVulkan();
 	}
 
 	bool Init(SDL_Window *&window, int x, int y, int w, int h, int mode, std::string *error_message);
@@ -38,7 +38,10 @@ public:
 		return draw_;
 	}
 private:
+	void DestroyVulkan();
+
 	Draw::DrawContext *draw_ = nullptr;
 	VulkanContext *vulkan_ = nullptr;
 	VulkanRenderManager *renderManager_ = nullptr;
+	bool glslangInitialized_ = false;
 };

@@ -194,6 +194,9 @@ PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR;
 #elif defined(_WIN32)
 PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
 #endif
+#if defined(VK_USE_PLATFORM_VI_NN)
+PFN_vkCreateViSurfaceNN vkCreateViSurfaceNN;
+#endif
 #if defined(VK_USE_PLATFORM_METAL_EXT)
 PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT;
 #endif
@@ -250,10 +253,23 @@ using namespace PPSSPP_VK;
 
 #if PPSSPP_PLATFORM(IOS_APP_STORE)
 // Statically linked MoltenVK
-#elif PPSSPP_PLATFORM(SWITCH)
+#elif PPSSPP_PLATFORM(SWITCH) && !defined(SWITCH_USE_NXVK)
 typedef void *VulkanLibraryHandle;
 static VulkanLibraryHandle vulkanLibrary;
 #define dlsym(x, y) nullptr
+#elif PPSSPP_PLATFORM(SWITCH)
+typedef void *VulkanLibraryHandle;
+static VulkanLibraryHandle vulkanLibrary;
+extern "C" PFN_vkVoidFunction vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName);
+#define dlsym(x, y) vk_icdGetInstanceProcAddr(VK_NULL_HANDLE, y)
+
+static VKAPI_ATTR VkResult VKAPI_CALL SwitchNXVKEnumerateInstanceLayerProperties(uint32_t *propertyCount, VkLayerProperties *properties) {
+	(void)properties;
+	if (!propertyCount)
+		return VK_ERROR_INITIALIZATION_FAILED;
+	*propertyCount = 0;
+	return VK_SUCCESS;
+}
 #elif PPSSPP_PLATFORM(WINDOWS)
 typedef HINSTANCE VulkanLibraryHandle;
 static VulkanLibraryHandle vulkanLibrary;
@@ -356,8 +372,13 @@ static const char * const so_names[] = {
 #if !PPSSPP_PLATFORM(IOS_APP_STORE)
 static VulkanLibraryHandle VulkanLoadLibrary(std::string *errorString) {
 #if PPSSPP_PLATFORM(SWITCH)
+	#if defined(SWITCH_USE_NXVK)
+	setenv("NVK_I_WANT_A_BROKEN_VULKAN_DRIVER", "1", 1);
+	return reinterpret_cast<VulkanLibraryHandle>(vk_icdGetInstanceProcAddr);
+	#else
 	// Always unavailable, for now.
 	return nullptr;
+	#endif
 #elif PPSSPP_PLATFORM(UWP)
 	return nullptr;
 #elif PPSSPP_PLATFORM(WINDOWS)
@@ -438,6 +459,14 @@ bool VulkanMayBeAvailable() {
 	// MoltenVK does no longer seem to support iOS <= 12, despite what the docs say.
 	g_vulkanMayBeAvailable = System_GetPropertyInt(SYSPROP_SYSTEMVERSION) >= 13;
 	return g_vulkanMayBeAvailable;
+#elif PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	// NXVK is linked into the NRO. Its ICD only exposes instance entrypoints
+	// after vkCreateInstance, while the generic probe below asks for them with
+	// a null instance and incorrectly rejects the driver.
+	setenv("NVK_I_WANT_A_BROKEN_VULKAN_DRIVER", "1", 1);
+	g_vulkanAvailabilityChecked = true;
+	g_vulkanMayBeAvailable = true;
+	return true;
 #else
 	// Unsupported in VR at the moment
 	if (IsVREnabled()) {
@@ -665,20 +694,52 @@ bool VulkanLoad(std::string *errorStr) {
 		}
 	}
 
+	#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	// NXVK is a statically linked ICD, so there is no Vulkan loader export to
+	// discover. Use its ICD entrypoint directly for global function lookup.
+	vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(vk_icdGetInstanceProcAddr);
+	vkCreateInstance = reinterpret_cast<PFN_vkCreateInstance>(vk_icdGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance"));
+	vkGetDeviceProcAddr = nullptr;
+	vkEnumerateInstanceVersion = reinterpret_cast<PFN_vkEnumerateInstanceVersion>(vk_icdGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceVersion"));
+	vkEnumerateInstanceExtensionProperties = reinterpret_cast<PFN_vkEnumerateInstanceExtensionProperties>(vk_icdGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties"));
+	vkEnumerateInstanceLayerProperties = reinterpret_cast<PFN_vkEnumerateInstanceLayerProperties>(vk_icdGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties"));
+	if (!vkEnumerateInstanceLayerProperties) {
+		// Layer enumeration belongs to the Vulkan loader. A directly linked ICD
+		// has no layers, so provide the loader's expected zero-layer result.
+		vkEnumerateInstanceLayerProperties = SwitchNXVKEnumerateInstanceLayerProperties;
+	}
+	#else
 	LOAD_GLOBAL_FUNC(vkCreateInstance);
 	LOAD_GLOBAL_FUNC(vkGetInstanceProcAddr);
 	LOAD_GLOBAL_FUNC(vkGetDeviceProcAddr);
-
 	LOAD_GLOBAL_FUNC(vkEnumerateInstanceVersion);
 	LOAD_GLOBAL_FUNC(vkEnumerateInstanceExtensionProperties);
 	LOAD_GLOBAL_FUNC(vkEnumerateInstanceLayerProperties);
+	#endif
 
-	if (vkCreateInstance && vkGetInstanceProcAddr && vkGetDeviceProcAddr && vkEnumerateInstanceExtensionProperties && vkEnumerateInstanceLayerProperties) {
+	bool baseFunctionsLoaded = vkCreateInstance && vkGetInstanceProcAddr &&
+		vkEnumerateInstanceExtensionProperties && vkEnumerateInstanceLayerProperties;
+	#if !PPSSPP_PLATFORM(SWITCH) || !defined(SWITCH_USE_NXVK)
+	baseFunctionsLoaded = baseFunctionsLoaded && vkGetDeviceProcAddr;
+	#endif
+	if (baseFunctionsLoaded) {
 		INFO_LOG(Log::G3D, "VulkanLoad: Base functions loaded.");
 		// NOTE: It's ok if vkEnumerateInstanceVersion is missing.
 		return true;
 	} else {
-		*errorStr = "Failed to load Vulkan base functions";
+		*errorStr = "Missing Vulkan base functions:";
+		if (!vkCreateInstance)
+			*errorStr += " vkCreateInstance";
+		if (!vkGetInstanceProcAddr)
+			*errorStr += " vkGetInstanceProcAddr";
+		if (!vkEnumerateInstanceExtensionProperties)
+			*errorStr += " vkEnumerateInstanceExtensionProperties";
+		if (!vkEnumerateInstanceLayerProperties)
+			*errorStr += " vkEnumerateInstanceLayerProperties";
+		#if !PPSSPP_PLATFORM(SWITCH) || !defined(SWITCH_USE_NXVK)
+		if (!vkGetDeviceProcAddr)
+			*errorStr += " vkGetDeviceProcAddr";
+		#endif
 		ERROR_LOG(Log::G3D, "VulkanLoad: %s", errorStr->c_str());
 		VulkanFreeLibrary(vulkanLibrary);
 		return false;
@@ -689,6 +750,9 @@ bool VulkanLoad(std::string *errorStr) {
 void VulkanLoadInstanceFunctions(VkInstance instance, const VulkanExtensions &enabledExtensions, uint32_t vulkanInstanceApiVersion) {
 #if !PPSSPP_PLATFORM(IOS_APP_STORE)
 	INFO_LOG(Log::G3D, "Loading Vulkan instance functions. Instance API version: %08x (%d.%d.%d)", vulkanInstanceApiVersion, VK_API_VERSION_MAJOR(vulkanInstanceApiVersion), VK_API_VERSION_MINOR(vulkanInstanceApiVersion), VK_API_VERSION_PATCH(vulkanInstanceApiVersion));
+	#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	LOAD_INSTANCE_FUNC(instance, vkGetDeviceProcAddr);
+	#endif
 	// OK, let's use the above functions to get the rest.
 	LOAD_INSTANCE_FUNC(instance, vkDestroyInstance);
 	LOAD_INSTANCE_FUNC(instance, vkEnumeratePhysicalDevices);
@@ -720,6 +784,8 @@ void VulkanLoadInstanceFunctions(VkInstance instance, const VulkanExtensions &en
 	LOAD_INSTANCE_FUNC(instance, vkCreateWin32SurfaceKHR);
 #elif defined(__ANDROID__)
 	LOAD_INSTANCE_FUNC(instance, vkCreateAndroidSurfaceKHR);
+#elif defined(VK_USE_PLATFORM_VI_NN)
+	LOAD_INSTANCE_FUNC(instance, vkCreateViSurfaceNN);
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
 	LOAD_INSTANCE_FUNC(instance, vkCreateMetalSurfaceEXT);
 #endif

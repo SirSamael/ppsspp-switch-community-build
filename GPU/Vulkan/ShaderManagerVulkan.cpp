@@ -89,8 +89,9 @@ static Promise<VkShaderModule> *CompileShaderModuleAsync(VulkanContext *vulkan, 
 		return shaderModule;
 	};
 
-#if defined(_DEBUG)
-	// Don't parallelize in debug mode, pathological behavior due to mutex locks in allocator which is HEAVILY used by glslang.
+#if defined(_DEBUG) || (PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK))
+	// Debug allocator locking makes glslang parallelism pathological. Switch
+	// newlib also lacks pthread_detach, so compile inline there.
 	bool singleThreaded = true;
 #else
 	bool singleThreaded = false;

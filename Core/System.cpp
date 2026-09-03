@@ -585,7 +585,7 @@ void PSP_ForceDebugStats(bool enable) {
 	_assert_(coreCollectDebugStatsCounter >= 0);
 }
 
-static void InitGPU(std::string *error_string) {
+static bool InitGPU(std::string *error_string) {
 	if (!gpu) {  // should be!
 		INFO_LOG(Log::Loader, "Starting graphics...");
 		Draw::DrawContext *draw = g_CoreParameter.graphicsContext ? g_CoreParameter.graphicsContext->GetDrawContext() : nullptr;
@@ -596,8 +596,10 @@ static void InitGPU(std::string *error_string) {
 			*error_string = "Unable to initialize rendering engine.";
 			CPU_Shutdown(false);
 			g_bootState = BootState::Failed;
+			return false;
 		}
 	}
+	return true;
 }
 
 bool PSP_InitStart(const CoreParameter &coreParam) {
@@ -673,7 +675,9 @@ bool PSP_InitStart(const CoreParameter &coreParam) {
 		// Initialize the GPU as far as we can here (do things like load cache files).
 		_dbg_assert_(!gpu);
 #ifndef __LIBRETRO__
-		InitGPU(errorString);
+		if (!InitGPU(errorString)) {
+			return;
+		}
 #endif
 		g_bootState = BootState::Complete;
 	});
@@ -705,7 +709,11 @@ BootState PSP_InitUpdate(std::string *error_string) {
 	}
 
 #ifdef __LIBRETRO__
-	InitGPU(error_string);
+	if (!InitGPU(error_string)) {
+		g_bootState = BootState::Off;
+		Core_NotifyLifecycle(CoreLifecycle::START_COMPLETE);
+		return BootState::Failed;
+	}
 #endif
 
 	// Ok, async part of the boot completed, let's finish up things on the main thread.

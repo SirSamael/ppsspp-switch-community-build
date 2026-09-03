@@ -87,7 +87,17 @@ SDLJoystick *joystick = NULL;
 
 #if PPSSPP_PLATFORM(SWITCH)
 #define LIBNX_SWKBD_LIMIT 500 // enforced by HOS
+// Returning to Sphaira after using SDL audio can crash the loader. Ask libnx to
+// terminate the title cleanly after main() returns instead of resuming hbloader.
+extern "C" {
+u32 __nx_applet_exit_mode = 1;
+}
+#if defined(SWITCH_USE_NXVK)
+u32 __nx_applet_type = AppletType_Application;
+size_t __nx_heap_size = 0;
+#else
 extern u32 __nx_applet_type; // Not exposed through a header?
+#endif
 #endif
 
 GlobalUIState lastUIState = UISTATE_MENU;
@@ -103,6 +113,8 @@ static float g_ForcedDPI = 0.0f; // if this is 0.0f, use g_DesktopDPI
 static float g_RefreshRate = 60.f;
 #if PPSSPP_PLATFORM(SWITCH)
 static int g_sampleRate = 48000;
+static int g_nxlinkSocket = -1;
+static bool g_socketInitialized = false;
 #else
 static int g_sampleRate = 44100;
 #endif
@@ -1456,8 +1468,10 @@ int main(int argc, char *argv[]) {
 	g_logManager.EnableOutput(LogOutput::Stdio);
 
 #ifdef HAVE_LIBNX
-	socketInitializeDefault();
-	nxlinkStdio();
+	if (R_SUCCEEDED(socketInitializeDefault())) {
+		g_socketInitialized = true;
+		g_nxlinkSocket = nxlinkStdio();
+	}
 #else // HAVE_LIBNX
 	// Ignore sigpipe.
 	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -1732,7 +1746,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			graphicsContext = glctx;
 		}
-#if !PPSSPP_PLATFORM(SWITCH)
+#if !PPSSPP_PLATFORM(SWITCH) || defined(SWITCH_USE_NXVK)
 	} else if (g_Config.iGPUBackend == (int)GPUBackend::VULKAN) {
 		SDLVulkanGraphicsContext *vkctx = new SDLVulkanGraphicsContext();
 		if (!vkctx->Init(window, x, y, w, h, mode | SDL_WINDOW_VULKAN, &error_message)) {
@@ -1742,6 +1756,10 @@ int main(int argc, char *argv[]) {
 			g_Config.iGPUBackend = (int)GPUBackend::OPENGL;
 			SetGPUBackend((GPUBackend)g_Config.iGPUBackend);
 			delete vkctx;
+			if (window) {
+				SDL_DestroyWindow(window);
+				window = nullptr;
+			}
 
 			// NOTE : This should match the three lines above in the OpenGL case.
 			SDLGLGraphicsContext *glctx = new SDLGLGraphicsContext();
@@ -1962,7 +1980,14 @@ int main(int argc, char *argv[]) {
 	glslang::FinalizeProcess();
 	fprintf(stderr, "Leaving main\n");
 #ifdef HAVE_LIBNX
-	socketExit();
+	if (g_nxlinkSocket >= 0) {
+		close(g_nxlinkSocket);
+		g_nxlinkSocket = -1;
+	}
+	if (g_socketInitialized) {
+		socketExit();
+		g_socketInitialized = false;
+	}
 #endif
 
 	// If a restart was requested (and supported on this platform), respawn the executable.

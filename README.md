@@ -7,15 +7,15 @@ Nintendo Switch compatibility, and a reproducible build process.
 
 ## Latest Release
 
-Current stable release:
+Current experimental release:
 
-    v0.6.5
+    v0.7.0
 
 Application metadata:
 
 - Title: PPSSPP Switch Community Build
 - Author: SirSamael
-- Version: 0.6.5
+- Version: 0.7.0
 - Installation path: `/switch/ppsspp/`
 
 ## Main Improvements
@@ -60,7 +60,8 @@ These changes fixed:
 ### Nintendo Switch Integration
 
 - Nintendo Switch libnx support
-- OpenGL ES graphics backend
+- NXVK Vulkan graphics backend, selected by default
+- OpenGL ES alternate renderer through Zink in the same NRO
 - Switch-compatible memory and threading changes
 - Homebrew Menu icon
 - Embedded NACP application metadata
@@ -97,22 +98,43 @@ Menu so the updated application icon and metadata are refreshed.
 
 Launch PPSSPP normally from the Homebrew Menu.
 
+This NXVK build must be launched with title takeover, not from Album/applet
+mode. NXVK requires the full application memory allocation. Hold `R` while
+starting a retail title from the Homebrew Menu, then launch PPSSPP from that
+title-takeover session.
+
+Each release also provides a matching `-source.tar.gz` archive and checksum.
+The source archive includes all submodules required to reproduce the binary,
+including NXVK and FFmpeg.
+
 ## Required Runtime Settings
 
 Use:
 
 - CPU core: JIT
-- Graphics backend: OpenGL ES
+- Graphics backend: Vulkan (default on a fresh configuration)
+
+OpenGL ES remains selectable in PPSSPP's graphics settings. In this release it
+runs through Zink over NXVK, so both graphics choices use the same Switch
+Vulkan driver. Zink is an alternate PPSSPP renderer, not an independent driver
+fallback. Existing v0.6.5 configurations retain their saved OpenGL selection;
+choose Vulkan in Graphics settings to migrate deliberately. The previous v0.6.5
+GLES-only package remains the independent fallback for systems where this
+experimental driver is unsuitable.
+
+If both NXVK renderers fail before the menu appears, PPSSPP keeps the OpenGL ES
+choice instead of cycling back to Vulkan. To retry automatic backend selection,
+delete `PSP/SYSTEM/FailedGraphicsBackends.txt` from PPSSPP's memstick folder.
 
 Do not use:
 
 - JIT using IR
-- Vulkan
 
 `JIT using IR` currently crashes every game in the tested compatibility set.
 Regular JIT is required.
 
-Vulkan is not supported by this community build.
+NXVK is experimental. Test both graphics backends before treating a game as
+compatible with this release.
 
 ## Tested Games
 
@@ -142,7 +164,7 @@ PSP game will work correctly.
 ## Known Issues
 
 - `JIT using IR` crashes currently tested games.
-- Vulkan is not supported.
+- NXVK Vulkan is experimental and may have game-specific issues.
 - NetLoader and nxlink launching are not recommended.
 - Some games may have performance or compatibility problems.
 - Adhoc multiplayer compatibility may vary between games and network
@@ -160,13 +182,19 @@ Recommended automated build command:
 
 The automated script generates:
 
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip.sha256
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip.sha256
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz.sha256
 
 The release archive contains:
 
     switch/ppsspp/PPSSPP.nro
     switch/ppsspp/assets/
+    LICENSE.TXT
+    THIRD_PARTY_NOTICES.md
+    licenses/nxvk/
+    BUILD-METADATA.txt
 
 ### Important FFmpeg Configuration
 
