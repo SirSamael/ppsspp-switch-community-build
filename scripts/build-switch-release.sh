@@ -9,6 +9,8 @@ RELEASE_NAME="PPSSPP-Switch-Community-Build-v${VERSION}"
 BUILD="$ROOT/build-switch-v${VERSION}"
 FFMPEG_PREFIX="$ROOT/build-switch-ffmpeg57-prefix"
 NXVK_PREFIX="$ROOT/build-switch-nxvk-prefix"
+NXVK_EXPAT_BUILD="$ROOT/build-switch-nxvk-expat"
+NXVK_EXPAT_SOURCE="$ROOT/ext/nxvk/subprojects/expat-2.5.0"
 NXVK_DOCKER="${NXVK_DOCKER:-docker}"
 NXVK_CONTAINER="$ROOT/scripts/docker-as-host-user.sh"
 NXVK_IMAGE="${NXVK_IMAGE:-nxvk-ppsspp}"
@@ -207,6 +209,32 @@ rm -rf "$NXVK_PREFIX"
 mkdir -p "$NXVK_PREFIX/lib" "$NXVK_PREFIX/include"
 cp -a "$ROOT/ext/nxvk/switch/build/pkg/lib/." "$NXVK_PREFIX/lib/"
 cp -a "$ROOT/ext/nxvk/include/vulkan" "$ROOT/ext/nxvk/include/vk_video" "$NXVK_PREFIX/include/"
+
+# Mesa's XML configuration path needs Expat.  Prefer devkitPro's portlib, but
+# build NXVK's pinned vendored source into the local prefix when it is absent.
+if [ ! -f "$PORTLIBS_PREFIX/lib/libexpat.a" ]; then
+  if [ ! -f "$NXVK_EXPAT_SOURCE/CMakeLists.txt" ]; then
+    echo "ERROR: NXVK's vendored Expat source is missing."
+    return 1 2>/dev/null || false
+  fi
+
+  echo "=== BUILDING VENDORED EXPAT FOR NXVK ==="
+  rm -rf "$NXVK_EXPAT_BUILD"
+  cmake \
+    -S "$NXVK_EXPAT_SOURCE" \
+    -B "$NXVK_EXPAT_BUILD" \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
+    -DCMAKE_INSTALL_PREFIX="$NXVK_PREFIX" \
+    -DEXPAT_SHARED_LIBS=OFF \
+    -DEXPAT_BUILD_TOOLS=OFF \
+    -DEXPAT_BUILD_EXAMPLES=OFF \
+    -DEXPAT_BUILD_TESTS=OFF \
+    -DEXPAT_BUILD_DOCS=OFF
+  cmake --build "$NXVK_EXPAT_BUILD" --parallel "$JOBS"
+  cmake --install "$NXVK_EXPAT_BUILD"
+fi
 
 if [ ! -f "$NXVK_PREFIX/lib/pkgconfig/nxvk-gl.pc" ]; then
   echo "ERROR: NXVK did not stage nxvk-gl.pc."

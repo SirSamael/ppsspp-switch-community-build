@@ -29,7 +29,8 @@ The PPSSPP build must therefore use:
 - libnx and switch-dev
 - switch-sdl2
 - switch-libpng
-- switch-libexpat
+- switch-libexpat (recommended; the release script builds NXVK's pinned
+  vendored Expat fallback when this portlib is unavailable)
 - CMake
 - Ninja
 - Git
