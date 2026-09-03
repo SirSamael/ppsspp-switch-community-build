@@ -231,7 +231,8 @@ if [ ! -f "$PORTLIBS_PREFIX/lib/libexpat.a" ]; then
     -DEXPAT_BUILD_TOOLS=OFF \
     -DEXPAT_BUILD_EXAMPLES=OFF \
     -DEXPAT_BUILD_TESTS=OFF \
-    -DEXPAT_BUILD_DOCS=OFF
+    -DEXPAT_BUILD_DOCS=OFF \
+    -DCMAKE_C_FLAGS=-DXML_POOR_ENTROPY
   cmake --build "$NXVK_EXPAT_BUILD" --parallel "$JOBS"
   cmake --install "$NXVK_EXPAT_BUILD"
 fi
