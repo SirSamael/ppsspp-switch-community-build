@@ -18,7 +18,6 @@
 #endif
 #include "SDLVulkanGraphicsContext.h"
 #if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
-#include <stdlib.h>
 #include <switch.h>
 #endif
 
@@ -31,19 +30,6 @@ static const bool g_Validate = true;
 #else
 static const bool g_Validate = false;
 #endif
-
-static bool InitVulkanSwapchain(VulkanContext *vulkan, VkPresentModeKHR presentMode) {
-#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
-	// Direct rendering into NXVK's zero-copy scanout images can leave stale
-	// block-linear tiles for the compositor. Its CPU-copy path is coherent.
-	setenv("NXVK_WSI_FORCE_CPU_COPY", "1", 1);
-	bool success = vulkan->InitSwapchain(presentMode);
-	unsetenv("NXVK_WSI_FORCE_CPU_COPY");
-	return success;
-#else
-	return vulkan->InitSwapchain(presentMode);
-#endif
-}
 
 bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, int h, int mode, std::string *error_message) {
 #if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
@@ -179,7 +165,7 @@ bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, in
 	}
 
 	VkPresentModeKHR presentMode = ConfigPresentModeToVulkan(draw_);
-	if (!InitVulkanSwapchain(vulkan_, presentMode)) {
+	if (!vulkan_->InitSwapchain(presentMode)) {
 		*error_message = vulkan_->InitError();
 		if (error_message->empty())
 			*error_message = "Unable to create the Vulkan swapchain.";
@@ -243,7 +229,7 @@ void SDLVulkanGraphicsContext::Resize() {
 	// It's like passing on oldSwapchain doesn't really work as expected.
 	vulkan_->DestroySwapchain();
 	VkPresentModeKHR presentMode = ConfigPresentModeToVulkan(draw_);
-	if (!InitVulkanSwapchain(vulkan_, presentMode)) {
+	if (!vulkan_->InitSwapchain(presentMode)) {
 		ERROR_LOG(Log::G3D, "Unable to recreate Vulkan swapchain: %s", vulkan_->InitError().c_str());
 		return;
 	}

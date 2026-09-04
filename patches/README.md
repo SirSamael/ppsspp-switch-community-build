@@ -8,7 +8,7 @@ Build v0.7.0.
     patches/submodules/aemu-postoffice-switch.patch
     patches/submodules/glslang-switch.patch
     patches/submodules/lua-switch.patch
-    patches/submodules/nxvk-switch-wsi-cpu-copy.patch
+    patches/submodules/nxvk-switch-zero-copy-sync.patch
 
 ## Initialize Submodules
 
@@ -22,7 +22,7 @@ Run from the repository root:
     git -C ext/aemu_postoffice apply --check ../../patches/submodules/aemu-postoffice-switch.patch
     git -C ext/glslang apply --check ../../patches/submodules/glslang-switch.patch
     git -C ext/lua apply --check ../../patches/submodules/lua-switch.patch
-    git -C ext/nxvk apply --check ../../patches/submodules/nxvk-switch-wsi-cpu-copy.patch
+    git -C ext/nxvk apply --check ../../patches/submodules/nxvk-switch-zero-copy-sync.patch
 
 Each command should complete without an error.
 
@@ -31,7 +31,7 @@ Each command should complete without an error.
     git -C ext/aemu_postoffice apply ../../patches/submodules/aemu-postoffice-switch.patch
     git -C ext/glslang apply ../../patches/submodules/glslang-switch.patch
     git -C ext/lua apply ../../patches/submodules/lua-switch.patch
-    git -C ext/nxvk apply ../../patches/submodules/nxvk-switch-wsi-cpu-copy.patch
+    git -C ext/nxvk apply ../../patches/submodules/nxvk-switch-zero-copy-sync.patch
 
 The automated release script performs these checks and applies the patches
 automatically:

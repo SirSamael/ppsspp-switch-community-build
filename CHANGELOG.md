@@ -9,8 +9,8 @@ Experimental Switch Vulkan release based on PPSSPP v1.20.4.
 - Added Zink as an alternate OpenGL ES renderer in the same NRO.
 - Made Vulkan shader compilation synchronous because Switch newlib does not
   support detached pthreads and its single compute worker can deadlock here.
-- Use NXVK's coherent CPU-copy presentation path for native Vulkan to avoid
-  block-linear zero-copy scanout corruption on the Switch display.
+- Synchronize zero-copy Vulkan presentation through Maxwell's graphics engine,
+  flushing rendered scanout images before their completion fence is signalled.
 - Preserved the v0.6.5 GLES-only release as an independent fallback package.
 
 ## Switch Runtime

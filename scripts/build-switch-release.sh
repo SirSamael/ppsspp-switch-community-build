@@ -158,8 +158,8 @@ apply_submodule_patch \
 
 apply_submodule_patch \
   "$ROOT/ext/nxvk" \
-  "$ROOT/patches/submodules/nxvk-switch-wsi-cpu-copy.patch" \
-  "NXVK Switch WSI CPU-copy"
+  "$ROOT/patches/submodules/nxvk-switch-zero-copy-sync.patch" \
+  "NXVK Switch zero-copy synchronization"
 
 echo
 echo "=== BUILDING ISOLATED FFMPEG 57 ==="

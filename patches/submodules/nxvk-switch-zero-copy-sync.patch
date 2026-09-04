@@ -1,0 +1,82 @@
+diff --git a/src/nouveau/vulkan/nvkmd/nvgpu/nvkmd_nvgpu_ctx.c b/src/nouveau/vulkan/nvkmd/nvgpu/nvkmd_nvgpu_ctx.c
+index 89386f2373e..0866435e2e8 100644
+--- a/src/nouveau/vulkan/nvkmd/nvgpu/nvkmd_nvgpu_ctx.c
++++ b/src/nouveau/vulkan/nvkmd/nvgpu/nvkmd_nvgpu_ctx.c
+@@ -14,18 +14,25 @@
+ #include <switch/nvidia/gpu.h>
+ #include <switch/result.h>
+ 
+-/* Maxwell channel GPFIFO host class (0xB06F) syncpoint methods.
+- * SYNCPOINTB takes OPERATION at bit 0 and SYNCPT_INDEX at bits 19:8.
+- */
++/* Maxwell channel GPFIFO host class (0xB06F) syncpoint methods. */
+ #define NVGPU_HOST_SYNCPOINTA           0x0070
+ #define NVGPU_HOST_SYNCPOINTB_OP_INCR   (1u << 0)
+ #define NVGPU_HOST_SYNCPOINTB_IDX_SHIFT 8
+ 
++/* Maxwell B 3D methods used by libdrm_nouveau and deko3d when completing a
++ * graphics submission.  Unlike a bare host syncpoint increment, this waits
++ * for prior 3D work and flushes its caches before making the fence visible.
++ */
++#define NVGPU_3D_FLUSH_PENDING_WRITES       0x1144
++#define NVGPU_3D_SYNCPOINT_ACTION           0x02c8
++#define NVGPU_3D_SYNCPOINT_ACTION_FLUSH     (1u << 16)
++#define NVGPU_3D_SYNCPOINT_ACTION_INCREMENT (1u << 20)
++
+ /* GPU submit wait bound (us) */
+ #define NVGPU_SUBMIT_TIMEOUT_US 10000000
+ 
+ static uint32_t
+-gen_fence_cmdlist(uint32_t *cmds, uint32_t syncpt_id)
++gen_host_fence_cmdlist(uint32_t *cmds, uint32_t syncpt_id)
+ {
+    cmds[0] = 0x20000000u | (2u << 16) | (NVGPU_HOST_SYNCPOINTA >> 2);
+    cmds[1] = 0;
+@@ -34,6 +41,20 @@ gen_fence_cmdlist(uint32_t *cmds, uint32_t syncpt_id)
+    return 3;
+ }
+ 
++static uint32_t
++gen_graphics_fence_cmdlist(uint32_t *cmds, uint32_t syncpt_id)
++{
++   /* Inline FLUSH_PENDING_WRITES on subchannel 0, followed by one
++    * SYNCPOINT_ACTION argument with FLUSH_CACHE and INCREMENT set.
++    */
++   cmds[0] = 0x80000000u | (NVGPU_3D_FLUSH_PENDING_WRITES >> 2);
++   cmds[1] = 0x20000000u | (1u << 16) |
++             (NVGPU_3D_SYNCPOINT_ACTION >> 2);
++   cmds[2] = syncpt_id | NVGPU_3D_SYNCPOINT_ACTION_FLUSH |
++             NVGPU_3D_SYNCPOINT_ACTION_INCREMENT;
++   return 3;
++}
++
+ static const char *
+ nvkmd_nvgpu_notif_str(uint32_t info32)
+ {
+@@ -105,7 +126,8 @@ nvkmd_nvgpu_warmup_channel(struct nvkmd_nvgpu_exec_ctx *ctx,
+       return result;
+ 
+    uint32_t fence[3];
+-   const uint32_t fence_dw = gen_fence_cmdlist(fence, syncpt);
++   /* No engine class is bound during warmup, so use host methods here. */
++   const uint32_t fence_dw = gen_host_fence_cmdlist(fence, syncpt);
+ 
+    uint32_t *cmds = mem->map;
+    for (uint32_t i = 0; i + fence_dw <= max_dw; i += fence_dw)
+@@ -209,8 +231,14 @@ nvkmd_nvgpu_create_exec_ctx(struct nvkmd_dev *_dev,
+    if (result != VK_SUCCESS)
+       goto fail_zcull;
+ 
+-   ctx->fence_cmds_dw = gen_fence_cmdlist(ctx->fence_mem->map,
+-                                          nvGpuChannelGetSyncpointId(&ctx->channel));
++   const uint32_t syncpt = nvGpuChannelGetSyncpointId(&ctx->channel);
++   if (engines & NVKMD_ENGINE_3D) {
++      ctx->fence_cmds_dw =
++         gen_graphics_fence_cmdlist(ctx->fence_mem->map, syncpt);
++   } else {
++      ctx->fence_cmds_dw =
++         gen_host_fence_cmdlist(ctx->fence_mem->map, syncpt);
++   }
+    ctx->fence_cmds_addr = ctx->fence_mem->va->addr;
+ 
+    /* Written once here, refetched from memory on every kickoff. */

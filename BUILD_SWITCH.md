@@ -295,10 +295,9 @@ backend selection.
 
 ## Performance Notes
 
-- Native Vulkan currently uses NXVK's CPU-copy presentation fallback because
-  direct zero-copy scanout can expose corrupted block-linear tiles to the
-  Switch compositor. This adds a full-frame copy and swizzle at presentation;
-  compare Vulkan performance before and after this workaround on hardware.
+- Native Vulkan uses NXVK's block-linear zero-copy presentation path. A local
+  NXVK patch makes graphics completion fences wait for pending rendering and
+  flush its caches before the Switch display scans the image.
 - Overall performance remained comparable to the previously tested Nintendo
   Switch build.
 - Grand Theft Auto: Liberty City Stories showed frequent frame drops.
