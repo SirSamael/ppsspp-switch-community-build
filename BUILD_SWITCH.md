@@ -48,7 +48,7 @@ Clone the repository and select the release branch:
 
     git clone --recursive https://github.com/SirSamael/ppsspp-switch-community-build.git
     cd ppsspp-switch-community-build
-    git switch feature/switch-nxvk-vulkan
+    git switch release-v0.7.0
 
 For an existing clone:
 
