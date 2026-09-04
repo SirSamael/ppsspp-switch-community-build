@@ -67,8 +67,7 @@ The automated script performs the complete process:
 6. Configures and compiles PPSSPP.
 7. Generates the NACP metadata and NRO.
 8. Copies the generated 185-file asset set.
-9. Creates the SD-card ZIP, complete corresponding source archive, and SHA-256
-   checksums.
+9. Creates the SD-card ZIP and SHA-256 checksum.
 
 Run from the repository root:
 
@@ -78,8 +77,6 @@ Generated files:
 
     dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip
     dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip.sha256
-    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz
-    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz.sha256
 
 The ZIP archive contains:
 
@@ -90,8 +87,7 @@ The ZIP archive contains:
     licenses/nxvk/
     BUILD-METADATA.txt
 
-Release builds must start from committed top-level source. This ensures the
-generated source archive is the exact source corresponding to the binary.
+Release builds must start from committed top-level source.
 
 ## Manual Build
 

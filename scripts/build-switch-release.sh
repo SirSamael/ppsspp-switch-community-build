@@ -25,10 +25,6 @@ NRO="$BUILD/PPSSPP.nro"
 
 ZIP_PATH="$DIST/${RELEASE_NAME}.zip"
 CHECKSUM_PATH="$ZIP_PATH.sha256"
-SOURCE_NAME="${RELEASE_NAME}-source"
-SOURCE_TAR="$DIST/${SOURCE_NAME}.tar"
-SOURCE_ARCHIVE="$DIST/${SOURCE_NAME}.tar.gz"
-SOURCE_CHECKSUM_PATH="$SOURCE_ARCHIVE.sha256"
 
 ICON="$ROOT/icons/PPSSPP-icon.jpg"
 
@@ -65,24 +61,6 @@ report_dkp_package() {
   fi
 }
 
-create_source_archive() {
-  local submodule
-  local submodule_tar
-
-  echo "=== CREATING COMPLETE CORRESPONDING SOURCE ARCHIVE ==="
-  git archive --format=tar --prefix="$SOURCE_NAME/" HEAD > "$SOURCE_TAR"
-
-  while IFS= read -r submodule; do
-    submodule_tar="$(mktemp "$DIST/nxvk-source.XXXXXX.tar")"
-    git -C "$ROOT/$submodule" archive --format=tar --prefix="$SOURCE_NAME/$submodule/" HEAD > "$submodule_tar"
-    tar --concatenate --file="$SOURCE_TAR" "$submodule_tar"
-    rm -f "$submodule_tar"
-  done < <(git submodule foreach --recursive --quiet 'printf "%s\\n" "$displaypath"')
-
-  gzip -n -f "$SOURCE_TAR"
-  sha256sum "$SOURCE_ARCHIVE" > "$SOURCE_CHECKSUM_PATH"
-}
-
 echo "=== PPSSPP Switch Community Build v${VERSION} ==="
 echo "Repository: $ROOT"
 echo "Build:      $BUILD"
@@ -93,7 +71,7 @@ echo
 cd "$ROOT"
 
 if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-  echo "ERROR: Release builds must start from committed top-level source so the source archive matches the binary."
+  echo "ERROR: Release builds must start from committed top-level source."
   return 1 2>/dev/null || false
 fi
 
@@ -354,8 +332,6 @@ if [ "$ASSET_COUNT" -ne 185 ]; then
   return 1 2>/dev/null || false
 fi
 
-create_source_archive
-
 echo
 echo "=== CREATING ZIP ARCHIVE ==="
 
@@ -402,11 +378,6 @@ ls -lh "$ZIP_PATH"
 cat "$CHECKSUM_PATH"
 
 echo
-echo "Complete corresponding source:"
-ls -lh "$SOURCE_ARCHIVE"
-cat "$SOURCE_CHECKSUM_PATH"
-
-echo
 echo "Archive root:"
 python3 - "$ZIP_PATH" <<'PY'
 from zipfile import ZipFile
@@ -425,5 +396,3 @@ echo
 echo "Build and packaging completed successfully."
 echo "Release ZIP: $ZIP_PATH"
 echo "Checksum:    $CHECKSUM_PATH"
-echo "Source:      $SOURCE_ARCHIVE"
-echo "Checksum:    $SOURCE_CHECKSUM_PATH"

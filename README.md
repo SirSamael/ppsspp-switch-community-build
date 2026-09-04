@@ -103,10 +103,6 @@ mode. NXVK requires the full application memory allocation. Hold `R` while
 starting a retail title from the Homebrew Menu, then launch PPSSPP from that
 title-takeover session.
 
-Each release also provides a matching `-source.tar.gz` archive and checksum.
-The source archive includes all submodules required to reproduce the binary,
-including NXVK and FFmpeg.
-
 ## Required Runtime Settings
 
 Use:
@@ -184,8 +180,6 @@ The automated script generates:
 
     dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip
     dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip.sha256
-    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz
-    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz.sha256
 
 The release archive contains:
 

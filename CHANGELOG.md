@@ -21,8 +21,7 @@ Experimental Switch Vulkan release based on PPSSPP v1.20.4.
 ## Build and Packaging
 
 - Added the NXVK and Zink container build/staging step to the release script.
-- Added a complete corresponding source archive, NXVK license bundle, and
-  build provenance metadata to each release.
+- Added an NXVK license bundle and build provenance metadata to each release.
 - Bumped the Switch release metadata and artifact version to `0.7.0`.
 
 ## Known Issues

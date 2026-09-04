@@ -12,13 +12,10 @@ files are GPL-2.0-or-later and upstream Mesa files retain their respective
 licenses. The applicable NXVK and Mesa license texts are included in the binary
 package under `licenses/nxvk/`.
 
-The matching complete source is released alongside the binary as
-`PPSSPP-Switch-Community-Build-v0.7.0-source.tar.gz`. It contains this project,
-all Git submodules including NXVK and FFmpeg, and the Switch submodule patches
-used by the release build.
+GitHub provides source snapshots for each release tag. The exact source
+revisions used by a build are recorded in `BUILD-METADATA.txt`.
 
 ## FFmpeg
 
 This release uses the PPSSPP FFmpeg submodule at commit
-`82049cca2e4c1516ed00a77b502a21f91b7843f4`. Its license texts and complete
-source are included in the matching source archive.
+`82049cca2e4c1516ed00a77b502a21f91b7843f4`.
