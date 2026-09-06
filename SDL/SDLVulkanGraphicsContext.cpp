@@ -17,6 +17,9 @@
 #include "SDL_vulkan.h"
 #endif
 #include "SDLVulkanGraphicsContext.h"
+#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+#include <switch.h>
+#endif
 
 #if defined(VK_USE_PLATFORM_METAL_EXT)
 #include "SDLCocoaMetalLayer.h"
@@ -29,13 +32,22 @@ static const bool g_Validate = false;
 #endif
 
 bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, int h, int mode, std::string *error_message) {
+#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	window = SDL_CreateWindow("PPSSPP", x, y, w, h, mode & ~SDL_WINDOW_VULKAN);
+	if (!window) {
+		*error_message = std::string("Error creating SDL window: ") + SDL_GetError();
+		return false;
+	}
+#else
 	window = SDL_CreateWindow("Initializing Vulkan...", x, y, w, h, mode);
 	if (!window) {
 		fprintf(stderr, "Error creating SDL window: %s\n", SDL_GetError());
 		exit(1);
 	}
+#endif
 
 	init_glslang();
+	glslangInitialized_ = true;
 
 	g_LogOptions.breakOnError = true;
 	g_LogOptions.breakOnWarning = true;
@@ -47,6 +59,7 @@ bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, in
 	if (!VulkanLoad(&errorStr)) {
 		*error_message = "Failed to load Vulkan driver library: ";
 		(*error_message) += errorStr;
+		DestroyVulkan();
 		return false;
 	}
 
@@ -56,8 +69,7 @@ bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, in
 	InitVulkanCreateInfoFromConfig(&info);
 	if (VK_SUCCESS != vulkan_->CreateInstance(info)) {
 		*error_message = vulkan_->InitError();
-		delete vulkan_;
-		vulkan_ = nullptr;
+		DestroyVulkan();
 		return false;
 	}
 
@@ -70,11 +82,23 @@ bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, in
 
 	if (vulkan_->CreateDevice(deviceNum) != VK_SUCCESS) {
 		*error_message = vulkan_->InitError();
-		delete vulkan_;
-		vulkan_ = nullptr;
+		DestroyVulkan();
 		return false;
 	}
 
+	#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	NWindow *nativeWindow = nwindowGetDefault();
+	vulkan_->SetCbGetDrawSize([nativeWindow]() {
+		u32 width = 1, height = 1;
+		nwindowGetDimensions(nativeWindow, &width, &height);
+		return VkExtent2D{ width, height };
+	});
+	if (vulkan_->InitSurface(WINDOWSYSTEM_NN_VI, nativeWindow, nullptr) != VK_SUCCESS) {
+		*error_message = "Unable to create the NXVK VI presentation surface.";
+		DestroyVulkan();
+		return false;
+	}
+	#else
 	vulkan_->SetCbGetDrawSize([window]() {
 		int w=1,h=1;
 		SDL_Vulkan_GetDrawableSize(window, &w, &h);
@@ -127,43 +151,76 @@ bool SDLVulkanGraphicsContext::Init(SDL_Window *&window, int x, int y, int w, in
 		exit(1);
 		break;
 	}
+	#endif
 
 	bool useMultiThreading = g_Config.bRenderMultiThreading;
 	if (g_Config.iInflightFrames == 1) {
 		useMultiThreading = false;
 	}
 	draw_ = Draw::T3DCreateVulkanContext(vulkan_, useMultiThreading);
+	if (!draw_) {
+		*error_message = "Unable to create the Vulkan drawing context.";
+		DestroyVulkan();
+		return false;
+	}
 
 	VkPresentModeKHR presentMode = ConfigPresentModeToVulkan(draw_);
 	if (!vulkan_->InitSwapchain(presentMode)) {
 		*error_message = vulkan_->InitError();
-		Shutdown();
+		if (error_message->empty())
+			*error_message = "Unable to create the Vulkan swapchain.";
+		DestroyVulkan();
 		return false;
 	}
 
 	SetGPUBackend(GPUBackend::VULKAN);
 	bool success = draw_->CreatePresets();
-	_assert_(success);
+	if (!success) {
+		*error_message = "Unable to create Vulkan rendering presets.";
+		DestroyVulkan();
+		return false;
+	}
 	draw_->HandleEvent(Draw::Event::GOT_BACKBUFFER, vulkan_->GetBackbufferWidth(), vulkan_->GetBackbufferHeight());
 
 	renderManager_ = (VulkanRenderManager *)draw_->GetNativeObject(Draw::NativeObject::RENDER_MANAGER);
+	if (!renderManager_) {
+		*error_message = "Unable to create the Vulkan render manager.";
+		DestroyVulkan();
+		return false;
+	}
 	renderManager_->SetInflightFrames(g_Config.iInflightFrames);
 	return true;
 }
 
 void SDLVulkanGraphicsContext::Shutdown() {
-	if (draw_)
+	DestroyVulkan();
+}
+
+void SDLVulkanGraphicsContext::DestroyVulkan() {
+	if (draw_ && vulkan_ && vulkan_->GetDevice())
 		draw_->HandleEvent(Draw::Event::LOST_BACKBUFFER, vulkan_->GetBackbufferWidth(), vulkan_->GetBackbufferHeight());
 	delete draw_;
 	draw_ = nullptr;
-	vulkan_->WaitUntilQueueIdle();
-	vulkan_->DestroySwapchain();
-	vulkan_->DestroySurface();
-	vulkan_->DestroyDevice();
-	vulkan_->DestroyInstance();
-	delete vulkan_;
-	vulkan_ = nullptr;
-	finalize_glslang();
+	renderManager_ = nullptr;
+
+	if (vulkan_) {
+		if (vulkan_->GetDevice()) {
+			vulkan_->WaitUntilQueueIdle();
+			vulkan_->DestroySwapchain();
+			vulkan_->DestroySurface();
+			vulkan_->DestroyDevice();
+		} else {
+			vulkan_->DestroySurface();
+		}
+		if (vulkan_->GetInstance())
+			vulkan_->DestroyInstance();
+		delete vulkan_;
+		vulkan_ = nullptr;
+	}
+	if (glslangInitialized_) {
+		finalize_glslang();
+		glslangInitialized_ = false;
+	}
 }
 
 void SDLVulkanGraphicsContext::Resize() {
@@ -172,7 +229,10 @@ void SDLVulkanGraphicsContext::Resize() {
 	// It's like passing on oldSwapchain doesn't really work as expected.
 	vulkan_->DestroySwapchain();
 	VkPresentModeKHR presentMode = ConfigPresentModeToVulkan(draw_);
-	vulkan_->InitSwapchain(presentMode);
+	if (!vulkan_->InitSwapchain(presentMode)) {
+		ERROR_LOG(Log::G3D, "Unable to recreate Vulkan swapchain: %s", vulkan_->InitError().c_str());
+		return;
+	}
 	draw_->HandleEvent(Draw::Event::GOT_BACKBUFFER, vulkan_->GetBackbufferWidth(), vulkan_->GetBackbufferHeight());
 }
 

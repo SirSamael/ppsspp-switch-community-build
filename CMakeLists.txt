@@ -105,7 +105,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Android")
 endif()
 
 # We only support Vulkan on Unix, macOS (by MoltenVK), Android and Windows.
-if(ANDROID OR WIN32 OR (UNIX AND NOT ARM_NO_VULKAN))
+# NXVK supplies a statically linked Vulkan ICD for libnx builds.
+if(ANDROID OR WIN32 OR (UNIX AND NOT ARM_NO_VULKAN) OR SWITCH_USE_NXVK)
 	set(VULKAN ON)
 endif()
 
@@ -197,11 +198,29 @@ option(SIMULATOR "Set to ON when targeting an x86 simulator of an ARM platform" 
 option(LIBRETRO "Set to ON to generate the libretro target" OFF)
 # :: Options
 option(USE_LIBNX "Set to ON to build for Switch(libnx)" OFF)
+option(SWITCH_USE_NXVK "Build the Switch frontend against NXVK and Zink" OFF)
+set(NXVK_PREFIX "" CACHE PATH "Staged NXVK portlib prefix")
+set(PPSSPP_GIT_VERSION_OVERRIDE "" CACHE STRING "Override the generated PPSSPP version string")
 
 if(USE_LIBNX)
 	# libnx does not provide a separate Linux-style libdl.
 	set(CMAKE_DL_LIBS "")
 	add_compile_definitions(HAVE_LIBNX IMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS)
+endif()
+
+if(SWITCH_USE_NXVK)
+	if(NOT USE_LIBNX)
+		message(FATAL_ERROR "SWITCH_USE_NXVK requires USE_LIBNX")
+	endif()
+	if(NOT NXVK_PREFIX OR NOT EXISTS "${NXVK_PREFIX}/include/vulkan/vulkan.h" OR NOT EXISTS "${NXVK_PREFIX}/lib/libnvk_gl.a" OR NOT EXISTS "${NXVK_PREFIX}/lib/pkgconfig/nxvk-gl.pc")
+		message(FATAL_ERROR "SWITCH_USE_NXVK requires a staged NXVK_PREFIX containing Vulkan headers, libnvk_gl.a, and nxvk-gl.pc")
+	endif()
+	find_library(NXVK_EXPAT_LIBRARY NAMES expat PATHS "${NXVK_PREFIX}/lib")
+	if(NOT NXVK_EXPAT_LIBRARY)
+		message(FATAL_ERROR "SWITCH_USE_NXVK requires switch-libexpat (or libexpat.a in NXVK_PREFIX/lib)")
+	endif()
+	add_compile_definitions(SWITCH_USE_NXVK)
+	include_directories(BEFORE "${NXVK_PREFIX}/include")
 endif()
 option(USE_FFMPEG "Build with FFMPEG support" ON)
 option(USE_DISCORD "Build with Discord support" ON)
@@ -308,13 +327,22 @@ include_directories(ext/glslang)
 # Anyway, glew will be going away anyway.
 include_directories(ext/glew)
 
-if(OPENXR AND NOT ARMV7_DEVICE)
+if(SWITCH_USE_NXVK)
+	# NXVK's EGL/GLES implementation is Zink over the same statically linked NVK ICD.
+	add_library(PPSSPP_NXVK_GL INTERFACE)
+	target_link_libraries(PPSSPP_NXVK_GL INTERFACE
+		"-Wl,--whole-archive" nvk_gl nvk "-Wl,--no-whole-archive"
+		"-Wl,--start-group" nvk_support z ${NXVK_EXPAT_LIBRARY} "-Wl,--end-group"
+		"-Wl,-u,vk_icdGetInstanceProcAddr" "-Wl,--gc-sections")
+	link_directories("${NXVK_PREFIX}/lib")
+	set(OPENGL_LIBRARIES PPSSPP_NXVK_GL)
+elseif(OPENXR AND NOT ARMV7_DEVICE)
 	set(OPENGL_LIBRARIES GLESv3 EGL)
 elseif(NOT OPENGL_LIBRARIES AND USING_GLES2)
 	set(OPENGL_LIBRARIES GLESv2 EGL)
 endif()
 
-if(USE_LIBNX)
+if(USE_LIBNX AND NOT SWITCH_USE_NXVK)
 	# Static Switch EGL/GLES dependencies must follow EGL.
 	list(APPEND OPENGL_LIBRARIES drm_nouveau glapi)
 endif()
@@ -326,7 +354,7 @@ if(NOT OPENGL_LIBRARIES)
 	find_package(OpenGL REQUIRED)
 endif()
 
-if(USING_EGL)
+if(USING_EGL AND NOT SWITCH_USE_NXVK)
 	if(NOT EGL_LIBRARIES)
 		set(EGL_LIBRARIES EGL)
 	endif()
@@ -337,6 +365,14 @@ if(NOT LIBRETRO AND NOT IOS AND NOT MACOSX)
 	find_package(SDL2)
 	find_package(SDL2_ttf)
 	find_package(Fontconfig)
+	if(SWITCH_USE_NXVK AND TARGET SDL2::SDL2-static)
+		# switch-sdl2 publishes switch-mesa as a static dependency. NXVK provides
+		# EGL itself, so retaining those libraries would link two Mesa stacks.
+		get_target_property(SWITCH_SDL2_LINK_LIBRARIES SDL2::SDL2-static INTERFACE_LINK_LIBRARIES)
+		list(REMOVE_ITEM SWITCH_SDL2_LINK_LIBRARIES EGL glapi drm_nouveau)
+		set_property(TARGET SDL2::SDL2-static PROPERTY INTERFACE_LINK_LIBRARIES "${SWITCH_SDL2_LINK_LIBRARIES}")
+		unset(SWITCH_SDL2_LINK_LIBRARIES)
+	endif()
 
 	# TODO: this can be removed once CI supports newer SDL2_ttf
 	if (NOT SDL2_ttf_FOUND)
@@ -1525,7 +1561,7 @@ else()
 		SDL/SDLMain.cpp
 		SDL/SDLGLGraphicsContext.cpp
 	)
-	if(NOT USE_LIBNX)
+	if(NOT USE_LIBNX OR SWITCH_USE_NXVK)
 		list(APPEND nativeExtra
 			SDL/SDLVulkanGraphicsContext.cpp
 		)
@@ -1542,7 +1578,12 @@ else()
 		message(WARNING "Found SDL2_ttf <2.0.18 - this is too old, falling back to atlas")
 	endif()
 	if(SDL2_ttf_FOUND)
-		list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf)
+		if(TARGET SDL2_ttf::SDL2_ttf)
+			list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf)
+		elseif(TARGET SDL2_ttf::SDL2_ttf-static)
+			# devkitPro's Switch port ships the static target only.
+			list(APPEND nativeExtraLibs SDL2_ttf::SDL2_ttf-static)
+		endif()
 	elseif(SDL2_ttf_PKGCONFIG_FOUND)
 		list(APPEND nativeExtraLibs PkgConfig::SDL2_ttf_PKGCONFIG)
 	endif()
@@ -2783,6 +2824,7 @@ endif()
 add_custom_command(OUTPUT something_that_never_exists
 	COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
 		-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}
+		-DVERSION_OVERRIDE=${PPSSPP_GIT_VERSION_OVERRIDE}
 		-P ${CMAKE_CURRENT_SOURCE_DIR}/git-version.cmake
 	${WIN_VERSION_CMD})
 
@@ -3110,6 +3152,13 @@ if(TargetBin)
 		target_link_options(${TargetBin} PRIVATE "-Wl,-z,max-page-size=16384")
 	endif()
 	target_link_libraries(${TargetBin} ${LinkCommon} Common)
+	if(SWITCH_USE_NXVK)
+		# The compatibility shims must be linked directly: Mesa references them
+		# only after libnative has already been scanned.
+		target_sources(${TargetBin} PRIVATE ext/nxvk/switch/smoke/nvk_compat.c)
+		# SDLVulkanGraphicsContext depends on Vulkan config helpers in Core.
+		target_link_libraries(${TargetBin} ${CoreLibName})
+	endif()
 endif()
 
 # installs

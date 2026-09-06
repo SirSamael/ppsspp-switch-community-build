@@ -474,6 +474,8 @@ static int DefaultGPUBackend() {
 
 #if PPSSPP_PLATFORM(UWP)
 	return (int)GPUBackend::DIRECT3D11;
+#elif PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+	return (int)GPUBackend::VULKAN;
 #elif PPSSPP_PLATFORM(WINDOWS)
 	// On Win10, there's a good chance Vulkan will work by default.
 	if (IsWin10OrHigher()) {
@@ -566,7 +568,12 @@ int Config::NextValidBackend() {
 			sFailedGPUBackends += ",ALL";
 		}
 		ERROR_LOG(Log::Loader, "All graphics backends failed");
-#if PPSSPP_PLATFORM(ANDROID)
+#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+		// Vulkan and the OpenGL ES option are both implemented by NXVK here.
+		// Do not cycle back to Vulkan after both have failed; retain the alternate
+		// renderer so the user can recover by clearing the failure marker.
+		return (int)GPUBackend::OPENGL;
+#elif PPSSPP_PLATFORM(ANDROID)
 		return (int)GPUBackend::OPENGL;
 #else
 		return DefaultGPUBackend();
@@ -592,7 +599,11 @@ bool Config::IsBackendEnabled(GPUBackend backend) {
 	if (backend != GPUBackend::DIRECT3D11)
 		return false;
 #elif PPSSPP_PLATFORM(SWITCH)
+	#if defined(SWITCH_USE_NXVK)
+	if (backend != GPUBackend::OPENGL && backend != GPUBackend::VULKAN)
+	#else
 	if (backend != GPUBackend::OPENGL)
+	#endif
 		return false;
 #elif PPSSPP_PLATFORM(WINDOWS)
 	if (backend == GPUBackend::DIRECT3D11 && !IsVistaOrHigher())

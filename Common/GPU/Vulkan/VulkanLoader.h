@@ -21,6 +21,8 @@
 
 #if PPSSPP_PLATFORM(ANDROID)
 #define VK_USE_PLATFORM_ANDROID_KHR
+#elif PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+#define VK_USE_PLATFORM_VI_NN
 #elif defined(_WIN32)
 #define VK_USE_PLATFORM_WIN32_KHR
 #define WIN32_LEAN_AND_MEAN
@@ -36,7 +38,11 @@
 #define VK_ENABLE_BETA_EXTENSIONS				1		// VK_KHR_portability_subset
 #endif
 
+#if PPSSPP_PLATFORM(SWITCH) && defined(SWITCH_USE_NXVK)
+#include <vulkan/vulkan.h>
+#else
 #include "ext/vulkan/vulkan.h"
+#endif
 #include <string>
 
 // Hacky X11 header workaround
@@ -197,6 +203,8 @@ extern PFN_vkCreateAndroidSurfaceKHR vkCreateAndroidSurfaceKHR;
 extern PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
 extern PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT;
+#elif defined(VK_USE_PLATFORM_VI_NN)
+extern PFN_vkCreateViSurfaceNN vkCreateViSurfaceNN;
 #endif
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
 extern PFN_vkCreateXlibSurfaceKHR vkCreateXlibSurfaceKHR;

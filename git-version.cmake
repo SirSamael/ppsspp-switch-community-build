@@ -2,18 +2,22 @@ set(GIT_VERSION_FILE "${OUTPUT_DIR}/git-version.cpp")
 set(GIT_VERSION "unknown")
 set(GIT_VERSION_UPDATE "1")
 
-find_package(Git)
-if(GIT_FOUND AND EXISTS "${SOURCE_DIR}/.git/")
-	execute_process(COMMAND ${GIT_EXECUTABLE} describe --always
-		WORKING_DIRECTORY ${SOURCE_DIR}
-		RESULT_VARIABLE exit_code
-		OUTPUT_VARIABLE GIT_VERSION)
-	if(NOT ${exit_code} EQUAL 0)
-		message(WARNING "git describe failed, unable to include version.")
-	endif()
-	string(STRIP ${GIT_VERSION} GIT_VERSION)
+if(DEFINED VERSION_OVERRIDE AND NOT VERSION_OVERRIDE STREQUAL "")
+	set(GIT_VERSION "${VERSION_OVERRIDE}")
 else()
-	message(WARNING "git not found, unable to include version.")
+	find_package(Git)
+	if(GIT_FOUND AND EXISTS "${SOURCE_DIR}/.git/")
+		execute_process(COMMAND ${GIT_EXECUTABLE} describe --always
+			WORKING_DIRECTORY ${SOURCE_DIR}
+			RESULT_VARIABLE exit_code
+			OUTPUT_VARIABLE GIT_VERSION)
+		if(NOT ${exit_code} EQUAL 0)
+			message(WARNING "git describe failed, unable to include version.")
+		endif()
+		string(STRIP ${GIT_VERSION} GIT_VERSION)
+	else()
+		message(WARNING "git not found, unable to include version.")
+	endif()
 endif()
 
 if(EXISTS ${GIT_VERSION_FILE})

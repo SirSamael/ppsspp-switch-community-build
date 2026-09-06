@@ -144,6 +144,8 @@ VkResult VulkanContext::CreateInstance(const CreateInfo &info) {
 	instance_extensions_enabled_.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #elif defined(__ANDROID__)
 	instance_extensions_enabled_.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_VI_NN)
+	instance_extensions_enabled_.push_back(VK_NN_VI_SURFACE_EXTENSION_NAME);
 #else
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
 	if (IsInstanceExtensionAvailable(VK_KHR_XLIB_SURFACE_EXTENSION_NAME)) {
@@ -810,13 +812,11 @@ VkResult VulkanContext::CreateDevice(int physical_device) {
 	if (res != VK_SUCCESS) {
 		init_error_ = "Unable to create Vulkan device";
 		ERROR_LOG(Log::G3D, "%s", init_error_.c_str());
-	} else {
-		VulkanLoadDeviceFunctions(device_, extensionsLookup_, vulkanDeviceApiVersion_);
+		device_ = VK_NULL_HANDLE;
+		return res;
 	}
+	VulkanLoadDeviceFunctions(device_, extensionsLookup_, vulkanDeviceApiVersion_);
 	INFO_LOG(Log::G3D, "Vulkan Device created: %s", physicalDeviceProperties_[physical_device_].properties.deviceName);
-
-	// Since we successfully created a device (however we got here, might be interesting in debug), we force the choice to be visible in the menu.
-	VulkanSetAvailable(true);
 
 	VmaAllocatorCreateInfo allocatorInfo = {};
 	allocatorInfo.vulkanApiVersion = std::min(vulkanDeviceApiVersion_, vulkanInstanceApiVersion_);
@@ -824,8 +824,16 @@ VkResult VulkanContext::CreateDevice(int physical_device) {
 	allocatorInfo.device = device_;
 	allocatorInfo.instance = instance_;
 	VkResult result = vmaCreateAllocator(&allocatorInfo, &allocator_);
-	_assert_(result == VK_SUCCESS);
-	_assert_(allocator_ != VK_NULL_HANDLE);
+	if (result != VK_SUCCESS || allocator_ == VK_NULL_HANDLE) {
+		init_error_ = "Unable to create Vulkan memory allocator";
+		ERROR_LOG(Log::G3D, "%s", init_error_.c_str());
+		vkDestroyDevice(device_, nullptr);
+		device_ = VK_NULL_HANDLE;
+		return result != VK_SUCCESS ? result : VK_ERROR_INITIALIZATION_FAILED;
+	}
+
+	// Since we successfully created a device (however we got here, might be interesting in debug), we force the choice to be visible in the menu.
+	VulkanSetAvailable(true);
 
 	// Examine the physical device to figure out super rough performance grade.
 	// Basically all we want to do is to identify low performance mobile devices
@@ -969,6 +977,16 @@ VkResult VulkanContext::ReinitSurface() {
 		android.flags = 0;
 		android.window = wnd;
 		retval = vkCreateAndroidSurfaceKHR(instance_, &android, nullptr, &surface_);
+		break;
+	}
+#endif
+#if defined(VK_USE_PLATFORM_VI_NN)
+	case WINDOWSYSTEM_NN_VI:
+	{
+		VkViSurfaceCreateInfoNN vi{ VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN };
+		vi.flags = 0;
+		vi.window = winsysData1_;
+		retval = vkCreateViSurfaceNN(instance_, &vi, nullptr, &surface_);
 		break;
 	}
 #endif

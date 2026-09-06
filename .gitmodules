@@ -69,3 +69,7 @@
 	path = ext/aemu_postoffice
 	url = https://github.com/Kethen/aemu_postoffice.git
 	branch = ppsspp
+[submodule "ext/nxvk"]
+	path = ext/nxvk
+	url = https://github.com/PalindromicBreadLoaf/nxvk.git
+	branch = switch

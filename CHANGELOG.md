@@ -1,3 +1,38 @@
+# v0.7.0
+
+Experimental Switch Vulkan release based on PPSSPP v1.20.4.
+
+## Graphics
+
+- Added the pinned NXVK static Vulkan driver and `VK_NN_vi_surface` integration.
+- Vulkan is the default graphics backend on this release.
+- Added Zink as an alternate OpenGL ES renderer in the same NRO.
+- Made Vulkan shader compilation synchronous because Switch newlib does not
+  support detached pthreads and its single compute worker can deadlock here.
+- Synchronize zero-copy Vulkan presentation through Maxwell's graphics engine,
+  flushing rendered scanout images before their completion fence is signalled.
+- Preserved the v0.6.5 GLES-only release as an independent fallback package.
+
+## Switch Runtime
+
+- Exit now terminates the title and returns to the HOME Menu instead of
+  returning to Sphaira, avoiding its SDL audio homebrew restore crash.
+
+## Build and Packaging
+
+- Added the NXVK and Zink container build/staging step to the release script.
+- Added an NXVK license bundle and build provenance metadata to each release.
+- Bumped the Switch release metadata and artifact version to `0.7.0`.
+
+## Known Issues
+
+- NXVK is experimental. Vulkan and Zink compatibility/performance must be
+  verified on hardware per game.
+- Title takeover is required; Album/applet mode does not provide enough memory
+  for NXVK.
+
+---
+
 # v0.6.0
 
 Stable Nintendo Switch community release based on PPSSPP v1.20.4.

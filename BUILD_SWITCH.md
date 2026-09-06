@@ -1,4 +1,4 @@
-# PPSSPP Switch Community Build v0.6.0
+# PPSSPP Switch Community Build v0.7.0
 
 Build instructions for the Nintendo Switch community build based on PPSSPP v1.20.4.
 
@@ -29,12 +29,15 @@ The PPSSPP build must therefore use:
 - libnx and switch-dev
 - switch-sdl2
 - switch-libpng
+- switch-libexpat (recommended; the release script builds NXVK's pinned
+  vendored Expat fallback when this portlib is unavailable)
 - CMake
 - Ninja
 - Git
 - Python 3
 - GNU Make
 - pkg-config
+- Docker or Podman, capable of building and running the NXVK container
 
 The devkitPro `switch-ffmpeg` package may remain installed, but it is not linked
 into this build.
@@ -45,7 +48,7 @@ Clone the repository and select the release branch:
 
     git clone --recursive https://github.com/SirSamael/ppsspp-switch-community-build.git
     cd ppsspp-switch-community-build
-    git switch release-v0.6.0
+    git switch release-v0.7.0
 
 For an existing clone:
 
@@ -60,10 +63,11 @@ The automated script performs the complete process:
 2. Verifies the pinned FFmpeg revision.
 3. Applies the required Switch submodule patches.
 4. Builds FFmpeg 57 into an isolated local prefix.
-5. Configures and compiles PPSSPP.
-6. Generates the NACP metadata and NRO.
-7. Copies the generated 185-file asset set.
-8. Creates the SD-card ZIP and SHA-256 checksum.
+5. Builds pinned NXVK plus the Zink OpenGL ES alternate renderer into a local prefix.
+6. Configures and compiles PPSSPP.
+7. Generates the NACP metadata and NRO.
+8. Copies the generated 185-file asset set.
+9. Creates the SD-card ZIP and SHA-256 checksum.
 
 Run from the repository root:
 
@@ -71,13 +75,19 @@ Run from the repository root:
 
 Generated files:
 
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip
-    dist/v0.6.0/PPSSPP-Switch-Community-Build-v0.6.0.zip.sha256
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip
+    dist/v0.7.0/PPSSPP-Switch-Community-Build-v0.7.0.zip.sha256
 
 The ZIP archive contains:
 
     switch/ppsspp/PPSSPP.nro
     switch/ppsspp/assets/
+    LICENSE.TXT
+    THIRD_PARTY_NOTICES.md
+    licenses/nxvk/
+    BUILD-METADATA.txt
+
+Release builds must start from committed top-level source.
 
 ## Manual Build
 
@@ -115,17 +125,48 @@ Required static libraries:
 
 The script does not overwrite the libraries installed under devkitPro.
 
-### 4. Configure PPSSPP
+### 4. Build NXVK and Zink
+
+The pinned `ext/nxvk` submodule builds Vulkan and the OpenGL ES Zink alternate renderer
+inside its container. The release script stages its output automatically. For a
+manual build, use the same host-user wrapper and derived image as the release
+script:
+
+    make -C ext/nxvk image CONTAINER="$PWD/scripts/docker-as-host-user.sh"
+    DOCKER_BIN=docker scripts/docker-as-host-user.sh \
+      build -t nxvk-ppsspp -f scripts/nxvk.Dockerfile .
+    make -C ext/nxvk gl \
+      CONTAINER="$PWD/scripts/docker-as-host-user.sh" \
+      IMAGE=nxvk-ppsspp \
+      DEVKITPRO=/opt/devkitpro
+
+Then stage its libraries and Vulkan headers:
+
+    rm -rf build-switch-nxvk-prefix
+    mkdir -p build-switch-nxvk-prefix/lib build-switch-nxvk-prefix/include
+    cp -a ext/nxvk/switch/build/pkg/lib/. build-switch-nxvk-prefix/lib/
+    cp -a ext/nxvk/include/vulkan ext/nxvk/include/vk_video \
+      build-switch-nxvk-prefix/include/
+
+The staged prefix must retain `lib/pkgconfig/nxvk-gl.pc`; CMake verifies this
+NXVK portlib manifest is present. The release script also verifies the pinned
+NXVK commit before building.
+
+### 5. Configure PPSSPP
 
 Run from the repository root:
 
     cmake \
       -S . \
-      -B build-switch-v0.6.0 \
+      -B build-switch-v0.7.0 \
       -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake \
+      -DCMAKE_PREFIX_PATH=/opt/devkitpro/portlibs/switch \
       -DUSE_LIBNX=ON \
+      -DSWITCH_USE_NXVK=ON \
+      -DNXVK_PREFIX="$PWD/build-switch-nxvk-prefix" \
+      -DPPSSPP_GIT_VERSION_OVERRIDE=v0.7.0 \
       -DUSING_EGL=ON \
       -DUSING_GLES2=ON \
       -DUSING_FBDEV=ON \
@@ -143,33 +184,33 @@ Run from the repository root:
       -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-### 5. Compile PPSSPP
+### 6. Compile PPSSPP
 
-    cmake --build build-switch-v0.6.0 --parallel 2
+    cmake --build build-switch-v0.7.0 --parallel 2
 
 Expected executable:
 
-    build-switch-v0.6.0/PPSSPPSDL.elf
+    build-switch-v0.7.0/PPSSPPSDL.elf
 
 Expected generated assets:
 
-    build-switch-v0.6.0/assets/
+    build-switch-v0.7.0/assets/
 
-### 6. Generate Homebrew Metadata
+### 7. Generate Homebrew Metadata
 
     /opt/devkitpro/tools/bin/nacptool --create \
       "PPSSPP Switch Community Build" \
       "SirSamael" \
-      "0.6.0" \
-      build-switch-v0.6.0/PPSSPP.nacp
+      "0.7.0" \
+      build-switch-v0.7.0/PPSSPP.nacp
 
-### 7. Generate the NRO
+### 8. Generate the NRO
 
     /opt/devkitpro/tools/bin/elf2nro \
-      build-switch-v0.6.0/PPSSPPSDL.elf \
-      build-switch-v0.6.0/PPSSPP.nro \
+      build-switch-v0.7.0/PPSSPPSDL.elf \
+      build-switch-v0.7.0/PPSSPP.nro \
       --icon=icons/PPSSPP-icon.jpg \
-      --nacp=build-switch-v0.6.0/PPSSPP.nacp
+      --nacp=build-switch-v0.7.0/PPSSPP.nacp
 
 ## SD Card Installation
 
@@ -183,6 +224,15 @@ the updated icon and metadata are refreshed.
 
 Launch PPSSPP normally through the Homebrew Menu.
 
+This NXVK release requires title takeover and must not be started through
+Album/applet mode. Hold `R` while launching a retail title from the Homebrew
+Menu, then start PPSSPP in that title-takeover session. NXVK requires the full
+application memory allocation.
+
+Choosing Exit closes the title-takeover session and returns to the HOME Menu.
+This intentionally avoids returning to Sphaira because its current restore path
+can crash after an SDL audio homebrew application exits.
+
 NetLoader and nxlink launching are not recommended for this release.
 
 ## Runtime Configuration
@@ -190,15 +240,19 @@ NetLoader and nxlink launching are not recommended for this release.
 Use:
 
 - CPU core: JIT
-- Graphics backend: OpenGL ES
+- Graphics backend: Vulkan (default on a fresh configuration)
 
 Do not use:
 
 - JIT using IR
-- Vulkan
 
 `JIT using IR` crashed every game in the current test set. Regular JIT is the
-required CPU core for this release.
+required CPU core for this release. OpenGL ES remains selectable as a Zink
+alternate renderer in the same NRO. Both choices share the NXVK driver, so this
+is not an independent fallback. Existing v0.6.5 configurations retain OpenGL
+until Vulkan is selected in settings. If both choices fail before the menu
+appears, delete `PSP/SYSTEM/FailedGraphicsBackends.txt` from PPSSPP's memstick
+folder before retrying.
 
 ## Audio Configuration
 
@@ -226,8 +280,20 @@ Earlier investigation also tested Street Fighter Alpha 3 MAX.
 This is a limited compatibility test set and is not a guarantee that every PSP
 game will work correctly.
 
+## NXVK Release Validation
+
+Before publishing an NXVK release, verify each intended game in Vulkan and, at
+least once, in the Zink OpenGL ES alternate renderer. Cover menu, gameplay,
+return-to-menu, and game exit in both handheld and docked modes. Also verify
+title-takeover launch, HOME suspend/resume, dock/undock while running, backend
+switching followed by restart, and recovery after an intentionally failed
+backend selection.
+
 ## Performance Notes
 
+- Native Vulkan uses NXVK's block-linear zero-copy presentation path. A local
+  NXVK patch makes graphics completion fences wait for pending rendering and
+  flush its caches before the Switch display scans the image.
 - Overall performance remained comparable to the previously tested Nintendo
   Switch build.
 - Grand Theft Auto: Liberty City Stories showed frequent frame drops.
