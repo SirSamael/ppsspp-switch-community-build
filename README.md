@@ -2,20 +2,36 @@
 
 An unofficial Nintendo Switch community port of PPSSPP, based on PPSSPP v1.20.4.
 
-This release focuses on stable game audio, correct video and cutscene playback,
-Nintendo Switch compatibility, and a reproducible build process.
+The project provides a stable OpenGL build and an experimental NXVK Vulkan
+preview, with working game audio, video playback, Nintendo Switch integration,
+and a reproducible build process.
 
-## Latest Release
+## Releases
 
-Current stable release:
+### Stable OpenGL release — v0.6.5
 
-    v0.6.5
+The recommended stable build continues to use OpenGL ES.
+
+[Download v0.6.5](https://github.com/SirSamael/ppsspp-switch-community-build/releases/tag/v0.6.5)
+
+### Experimental Vulkan preview — v0.7.0
+
+v0.7.0 introduces the NXVK Vulkan renderer through
+[PR #17](https://github.com/SirSamael/ppsspp-switch-community-build/pull/17).
+It has been verified on real Nintendo Switch hardware with working gameplay,
+audio, touch input, controller input, clean presentation, and normal exit to the
+HOME Menu.
+
+[Download v0.7.0](https://github.com/SirSamael/ppsspp-switch-community-build/releases/tag/v0.7.0)
+
+- Source branch: [`integration/pr17-vulkan`](https://github.com/SirSamael/ppsspp-switch-community-build/tree/integration/pr17-vulkan)
+- ZIP SHA-256: `092bea8f18ef3a845bbda0d259fb2fd65b52132f390ec88705e213ead90c472c`
+- Status: Experimental pre-release
 
 Application metadata:
 
 - Title: PPSSPP Switch Community Build
 - Author: SirSamael
-- Version: 0.6.5
 - Installation path: `/switch/ppsspp/`
 
 ## Main Improvements
@@ -61,6 +77,7 @@ These changes fixed:
 
 - Nintendo Switch libnx support
 - OpenGL ES graphics backend
+- Experimental NXVK Vulkan renderer in v0.7.0
 - Switch-compatible memory and threading changes
 - Homebrew Menu icon
 - Embedded NACP application metadata
@@ -95,24 +112,27 @@ The resulting structure must be:
 After replacing an existing version, completely close and reopen the Homebrew
 Menu so the updated application icon and metadata are refreshed.
 
-Launch PPSSPP normally from the Homebrew Menu.
+Launch v0.6.5 normally from the Homebrew Menu. For the v0.7.0 Vulkan preview,
+use full-memory title takeover.
 
 ## Required Runtime Settings
 
-Use:
+### v0.6.5 stable build
 
 - CPU core: JIT
 - Graphics backend: OpenGL ES
 
-Do not use:
+Vulkan is not included in v0.6.5, and `JIT using IR` is not recommended for
+that stable build.
 
-- JIT using IR
-- Vulkan
+### v0.7.0 Vulkan preview
 
-`JIT using IR` currently crashes every game in the tested compatibility set.
-Regular JIT is required.
+- CPU core: JIT
+- Graphics backend: Vulkan
+- Launch method: Full-memory title takeover
 
-Vulkan is not supported by this community build.
+OpenGL remains available in v0.7.0. Vulkan is experimental and is not yet
+consistently faster than OpenGL.
 
 ## Tested Games
 
@@ -141,14 +161,19 @@ PSP game will work correctly.
 
 ## Known Issues
 
-- `JIT using IR` crashes currently tested games.
-- Vulkan is not supported.
+- Vulkan support in v0.7.0 is experimental.
+- Vulkan performance is game-dependent and is not yet consistently faster than OpenGL.
+- High rendering resolutions can substantially reduce performance.
+- `JIT using IR` is not recommended for the v0.6.5 stable build.
 - NetLoader and nxlink launching are not recommended.
 - Some games may have performance or compatibility problems.
-- Adhoc multiplayer compatibility may vary between games and network
-  environments.
+- Adhoc multiplayer compatibility may vary between games and network environments.
 
 ## Building from Source
+
+The instructions below describe the stable `release-v0.6.0` source branch.
+The v0.7.0 Vulkan source and release scripts are maintained on
+[`integration/pr17-vulkan`](https://github.com/SirSamael/ppsspp-switch-community-build/tree/integration/pr17-vulkan).
 
 Detailed instructions are available in:
 
@@ -205,6 +230,13 @@ Required submodule patches:
 Nintendo Switch adaptation, compilation, device testing, and release maintenance:
 
     SirSamael
+
+NXVK Vulkan integration and contribution:
+
+    JohsonChou
+
+Special thanks to [@JohsonChou](https://github.com/JohsonChou) for contributing
+the v0.7.0 Vulkan foundation through PR #17.
 
 ChatGPT was used for research, debugging guidance, build investigation,
 documentation, and release preparation.
